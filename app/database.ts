@@ -9,7 +9,8 @@ export const initDatabase = async () => {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS meetings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL
+      title TEXT NOT NULL,
+      transcription TEXT
     );
     
     CREATE TABLE IF NOT EXISTS tasks (
@@ -54,4 +55,9 @@ export const addTask = async (meetingId: number, content: string) => {
 // 4. Delete a Task
 export const deleteTask = async (taskId: number) => {
   await db.runAsync('DELETE FROM tasks WHERE id = ?', [taskId]);
+};
+
+// 5. Add a new Meeting (Pill)
+export const addMeeting = async (title: string, transcription: string = '') => {
+  await db.runAsync('INSERT INTO meetings (title, transcription) VALUES (?, ?)', [title, transcription]);
 };

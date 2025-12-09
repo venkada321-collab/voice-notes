@@ -38,4 +38,6 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+
+# Vosk Models (Large Files)
+assets/models/

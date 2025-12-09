@@ -4,6 +4,7 @@ import { Image, Modal, Platform, SafeAreaView, StatusBar, StyleSheet, Text, Touc
 import { Entypo, Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
 import { getMeetings, getTasksForMeeting, initDatabase } from './database';
+import RecordModal from './RecordModal';
 // Import your DB functions
 // --- Shared Color Palette ---
 const colors = {
@@ -26,20 +27,33 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   const [tasks, setTasks] = useState<any[]>([]);       // The Tasks
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
-  // 2. INITIAL LOAD
-  useEffect(() => {
-    const loadData = async () => {
-      await initDatabase(); // Ensure DB is ready
-      const loadedMeetings = await getMeetings();
-      setMeetings(loadedMeetings);
+  // 1a. State for Record Modal
+  const [showRecordModal, setShowRecordModal] = useState(false);
 
-      // Set first tab as active by default
-      if (loadedMeetings.length > 0) {
-        setActiveTabId(loadedMeetings[0].id);
-      }
+  // 2. INITIAL LOAD
+  const loadMeetings = async () => {
+    const loadedMeetings = await getMeetings();
+    setMeetings(loadedMeetings);
+
+    // Set first tab as active by default if not set
+    if (loadedMeetings.length > 0 && activeTabId === null) {
+      setActiveTabId(loadedMeetings[0].id);
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      await initDatabase(); // Ensure DB is ready
+      await loadMeetings();
     };
-    loadData();
+    init();
   }, []);
+
+  const handleMeetingSaved = async () => {
+    await loadMeetings();
+    // Optionally switch to the new meeting? 
+    // For now just refresh content.
+  };
 
   // 3. FETCH TASKS when Tab changes
   useEffect(() => {
@@ -137,10 +151,18 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         <TouchableOpacity activeOpacity={0.7}>
           <Entypo name="home" size={30} color={colors.goldAccent} />
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => setShowRecordModal(true)}>
           <FontAwesome5 name="plus-square" size={28} color="#333" />
         </TouchableOpacity>
       </View>
+
+      <Modal
+        animationType="slide"
+        visible={showRecordModal}
+        onRequestClose={() => setShowRecordModal(false)}
+      >
+        <RecordModal onClose={() => setShowRecordModal(false)} onSave={handleMeetingSaved} />
+      </Modal>
     </SafeAreaView>
   );
 }

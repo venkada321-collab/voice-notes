@@ -14,7 +14,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.VoiceNotes"
     },
     "android": {
       "adaptiveIcon": {
@@ -47,6 +48,12 @@
               "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
             ]
           }
+        }
+      ],
+      [
+        "react-native-vosk",
+        {
+          "model": "./assets/models/model"
         }
       ]
     ],
