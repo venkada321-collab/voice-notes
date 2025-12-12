@@ -53,7 +53,9 @@
       [
         "react-native-vosk",
         {
-          "model": "./assets/models/model"
+          "models": [
+            "./assets/models/model"
+          ]
         }
       ]
     ],

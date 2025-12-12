@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Modal, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Entypo, Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
@@ -50,9 +50,19 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   }, []);
 
   const handleMeetingSaved = async () => {
-    await loadMeetings();
-    // Optionally switch to the new meeting? 
-    // For now just refresh content.
+    // 1. Reload the meetings list
+    const newMeetings = await getMeetings(); // Fetch directly instead of relying on loadMeetings state update lag
+    setMeetings(newMeetings);
+
+    // 2. Auto-select the last one (the new one)
+    if (newMeetings.length > 0) {
+      const newMeeting = newMeetings[newMeetings.length - 1];
+      setActiveTabId(newMeeting.id);
+
+      // Also update the index for the UI pill highlight
+      const newIndex = newMeetings.length - 1;
+      setActiveTabIndex(newIndex);
+    }
   };
 
   // 3. FETCH TASKS when Tab changes
@@ -81,7 +91,12 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       </View>
 
       {/* 2. Interactive Filter Tabs (Pills) */}
-      <View style={modalStyles.tabContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={modalStyles.tabContainer}
+        style={{ flexGrow: 0, maxHeight: 80 }}
+      >
         {meetings.map((meeting: any, index: number) => {
           const isActive = index === activeTabIndex;
           return (
@@ -106,7 +121,7 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       {/* 3. Main Content Area (Gold Background) */}
       <View style={modalStyles.contentContainer}>
@@ -347,6 +362,7 @@ const modalStyles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 24,
     gap: 12,
+    alignItems: 'center', // Align items vertically
   },
   pillButton: {
     borderRadius: 30,

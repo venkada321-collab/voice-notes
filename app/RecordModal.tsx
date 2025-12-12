@@ -1,7 +1,7 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Vosk from 'react-native-vosk';
+import * as Vosk from 'react-native-vosk';
 import { addMeeting } from './database';
 
 const colors = {
@@ -29,9 +29,9 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                 await Vosk.loadModel('model'); // Path relative to assets/models, defined in app.json
                 setIsModelLoaded(true);
                 console.log('Model loaded.');
-            } catch (e) {
+            } catch (e: any) {
                 console.error('Failed to load Vosk model', e);
-                Alert.alert('Error', 'Failed to load offline transcription model.');
+                Alert.alert('Error', 'Failed to load offline transcription model: ' + (e.message || JSON.stringify(e)));
             }
         };
         loadModel();
