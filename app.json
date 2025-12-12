@@ -61,6 +61,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a6a64b6a-09b5-43cc-82bb-f4e9db7662c2"
+      }
+    },
+    "owner": "venkada"
   }
 }

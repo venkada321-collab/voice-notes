@@ -3,8 +3,9 @@ import { Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Entypo, Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
-import { getMeetings, getTasksForMeeting, initDatabase } from './database';
+import { addTask, getMeetings, getTasksForMeeting, initDatabase } from './database';
 import RecordModal from './RecordModal';
+import { extractActionItems } from './services/llm';
 // Import your DB functions
 // --- Shared Color Palette ---
 const colors = {
@@ -29,6 +30,8 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
   // 1a. State for Record Modal
   const [showRecordModal, setShowRecordModal] = useState(false);
+  // Need to know the transcription for the last saved meeting? 
+  // Actually getMeetings returns the full object including transcription, so we are good.
 
   // 2. INITIAL LOAD
   const loadMeetings = async () => {
@@ -62,6 +65,22 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       // Also update the index for the UI pill highlight
       const newIndex = newMeetings.length - 1;
       setActiveTabIndex(newIndex);
+
+      // 3. Trigger Async Action Extraction
+      // We do this silently in the background
+      extractActionItems(newMeeting.transcription || newMeeting.title /* fallback to title if needed */).then(async (actions) => {
+        if (actions && actions.length > 0) {
+          console.log('Extracted actions:', actions);
+          for (const action of actions) {
+            await addTask(newMeeting.id, action);
+          }
+          // Refresh tasks if we are still on this tab
+          if (activeTabId === newMeeting.id) {
+            const updatedTasks = await getTasksForMeeting(newMeeting.id);
+            setTasks(updatedTasks);
+          }
+        }
+      }).catch(err => console.error('Extraction failed:', err));
     }
   };
 
