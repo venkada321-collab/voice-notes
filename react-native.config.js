@@ -1,3 +1,3 @@
 module.exports = {
-    assets: ['./assets/models/llm'],
+    assets: ['./assets/models/llm', './assets/models/model'],
 };

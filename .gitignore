@@ -41,3 +41,4 @@ yarn-error.*
 
 # Vosk Models (Large Files)
 assets/models/
+!assets/models/vosk-model.zip

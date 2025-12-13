@@ -6,7 +6,8 @@ config.resolver.assetExts.push(
     // Adds support for `.db` files for SQLite databases
     'db',
     'wav', // For audio files
-    'gguf' // For LLM models
+    'gguf', // For LLM models
+    'zip' // For zipped assets
 );
 // Add COEP and COOP headers to support SharedArrayBuffer
 config.server.enhanceMiddleware = (middleware) => {

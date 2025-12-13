@@ -1,0 +1,9 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/models/llm/Qwen3-0.6B-Q5_K_M.gguf",
+      "sha1": "cb4a25eb252dabb0105fab0aa0a9b957cc74a4b4"
+    }
+  ]
+}

@@ -1,7 +1,11 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Vosk from 'react-native-vosk';
+import { unzip } from 'react-native-zip-archive';
 import { addMeeting } from './database';
 
 const colors = {
@@ -25,13 +29,41 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
     useEffect(() => {
         const loadModel = async () => {
             try {
-                console.log('Loading usage model...');
-                await Vosk.loadModel('model'); // Path relative to assets/models, defined in app.json
+                if (isModelLoaded) return;
+                console.log('Starting model setup...');
+
+                // 1. Resolve the zip asset
+                const modelZip = require('../../assets/models/vosk-model.zip');
+                const asset = Asset.fromModule(modelZip);
+                await asset.downloadAsync();
+
+                if (!asset.localUri) throw new Error('Zip asset localUri missing');
+
+                // 2. Define Target Path using new API
+                const docDir = Paths.document;
+                if (!docDir) throw new Error('Document directory not found');
+
+                const targetDir = `${docDir.uri.replace('file://', '')}/vosk-model`;
+                // Ensure target dir logic is sound for unzip
+
+                // Check if already unzipped
+                const info = await FileSystem.getInfoAsync(docDir.uri + '/vosk-model');
+                if (!info.exists) {
+                    console.log('Unzipping model to:', targetDir);
+                    // unzip expects a source path (asset.localUri might suffice) and dest path
+                    await unzip(asset.localUri, targetDir);
+                    console.log('Unzip complete.');
+                }
+
+                const modelPath = targetDir;
+
+                console.log('Loading usage model from:', modelPath);
+                await Vosk.loadModel(modelPath);
                 setIsModelLoaded(true);
                 console.log('Model loaded.');
             } catch (e: any) {
                 console.error('Failed to load Vosk model', e);
-                Alert.alert('Error', 'Failed to load offline transcription model: ' + (e.message || JSON.stringify(e)));
+                Alert.alert('Error', 'Failed to load transcription model: ' + (e.message || JSON.stringify(e)));
             }
         };
         loadModel();
