@@ -1,6 +1,5 @@
 import { Asset } from 'expo-asset';
-import * as FileSystem from 'expo-file-system';
-import { Paths } from 'expo-file-system'; // Use Paths directly
+import { File as ExpoFile, Paths } from 'expo-file-system'; // Alias to avoid global File conflict
 import { initLlama, LlamaContext } from 'llama.rn';
 import { Alert } from 'react-native';
 
@@ -24,16 +23,19 @@ export const initModel = async () => {
 
         const docDir = Paths.document;
         if (!docDir) throw new Error('Document directory not found');
-        const destinationUri = docDir.uri + '/' + MODEL_NAME;
+        const destFile = new ExpoFile(docDir, MODEL_NAME);
 
-        // ... file copy logic ...
-        // Use new Paths API to check existence
-        const pathInfo = Paths.info(destinationUri);
-
-        if (!pathInfo.exists) {
+        if (!destFile.exists) {
             Alert.alert('LLM Init', 'Copying model asset...');
-            await FileSystem.copyAsync({ from: asset.localUri, to: destinationUri });
+            if (asset.localUri) {
+                const sourceFile = new ExpoFile(asset.localUri);
+                sourceFile.copy(destFile);
+            } else {
+                throw new Error('Asset localUri is null/undefined');
+            }
         }
+
+        const destinationUri = destFile.uri;
 
         context = await initLlama({
             model: destinationUri,
