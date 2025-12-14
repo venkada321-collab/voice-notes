@@ -27,8 +27,10 @@ export const initModel = async () => {
         const destinationUri = docDir.uri + '/' + MODEL_NAME;
 
         // ... file copy logic ...
-        const info = await FileSystem.getInfoAsync(destinationUri);
-        if (!info.exists) {
+        // Use new Paths API to check existence
+        const pathInfo = Paths.info(destinationUri);
+
+        if (!pathInfo.exists) {
             Alert.alert('LLM Init', 'Copying model asset...');
             await FileSystem.copyAsync({ from: asset.localUri, to: destinationUri });
         }
