@@ -49,15 +49,68 @@ export const getTasksForMeeting = async (meetingId: number) => {
 
 // 3. Add a new Task
 export const addTask = async (meetingId: number, content: string) => {
-  await db.runAsync('INSERT INTO tasks (meeting_id, content) VALUES (?, ?)', [meetingId, content]);
+  const statement = await db.prepareAsync('INSERT INTO tasks (meeting_id, content) VALUES (?, ?)');
+  try {
+    await statement.executeAsync([meetingId, content]);
+  } finally {
+    await statement.finalizeAsync();
+  }
 };
 
 // 4. Delete a Task
 export const deleteTask = async (taskId: number) => {
-  await db.runAsync('DELETE FROM tasks WHERE id = ?', [taskId]);
+  const statement = await db.prepareAsync('DELETE FROM tasks WHERE id = ?');
+  try {
+    await statement.executeAsync([taskId]);
+  } finally {
+    await statement.finalizeAsync();
+  }
 };
 
 // 5. Add a new Meeting (Pill)
 export const addMeeting = async (title: string, transcription: string = '') => {
-  await db.runAsync('INSERT INTO meetings (title, transcription) VALUES (?, ?)', [title, transcription]);
+  const statement = await db.prepareAsync('INSERT INTO meetings (title, transcription) VALUES (?, ?)');
+  try {
+    await statement.executeAsync([title, transcription]);
+  } finally {
+    await statement.finalizeAsync();
+  }
+};
+
+// 6. Delete a Meeting (and its tasks)
+export const deleteMeeting = async (meetingId: number) => {
+  // Manual cascade delete
+  const taskStmt = await db.prepareAsync('DELETE FROM tasks WHERE meeting_id = ?');
+  try {
+    await taskStmt.executeAsync([meetingId]);
+  } finally {
+    await taskStmt.finalizeAsync();
+  }
+
+  const meetingStmt = await db.prepareAsync('DELETE FROM meetings WHERE id = ?');
+  try {
+    await meetingStmt.executeAsync([meetingId]);
+  } finally {
+    await meetingStmt.finalizeAsync();
+  }
+};
+
+// 7. Update Meeting Title
+export const updateMeeting = async (meetingId: number, title: string) => {
+  const statement = await db.prepareAsync('UPDATE meetings SET title = ? WHERE id = ?');
+  try {
+    await statement.executeAsync([title, meetingId]);
+  } finally {
+    await statement.finalizeAsync();
+  }
+};
+
+// 8. Update Task Content
+export const updateTask = async (taskId: number, content: string) => {
+  const statement = await db.prepareAsync('UPDATE tasks SET content = ? WHERE id = ?');
+  try {
+    await statement.executeAsync([content, taskId]);
+  } finally {
+    await statement.finalizeAsync();
+  }
 };

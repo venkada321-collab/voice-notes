@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Entypo, Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
@@ -27,6 +27,12 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   const [meetings, setMeetings] = useState<any[]>([]); // The Pills
   const [tasks, setTasks] = useState<any[]>([]);       // The Tasks
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
+
+  // Edit State
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleText, setEditTitleText] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [editTaskText, setEditTaskText] = useState('');
 
   // 1a. State for Record Modal
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -97,10 +103,79 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       if (activeTabId !== null) {
         const loadedTasks = await getTasksForMeeting(activeTabId);
         setTasks(loadedTasks);
+      } else {
+        setTasks([]);
       }
+      // Reset edit states
+      setIsEditingTitle(false);
+      setEditingTaskId(null);
     };
     fetchTasks();
   }, [activeTabId]); // Re-run whenever activeTabId changes
+
+  // --- CRUD HANDLERS ---
+  const handleDeleteMeeting = async () => {
+    if (activeTabId === null) return;
+
+    Alert.alert("Delete Meeting", "Are you sure? All tasks will be lost.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete", style: "destructive", onPress: async () => {
+          await deleteMeeting(activeTabId);
+          const newMeetings = await getMeetings();
+          setMeetings(newMeetings);
+
+          if (newMeetings.length > 0) {
+            // Fallback to latest or index 0
+            const next = newMeetings[Math.max(0, newMeetings.length - 1)];
+            setActiveTabIndex(newMeetings.indexOf(next));
+            setActiveTabId(next.id);
+          } else {
+            setActiveTabId(null);
+            setActiveTabIndex(0);
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleStartEditTitle = () => {
+    const current = meetings.find(m => m.id === activeTabId);
+    if (!current) return;
+    setEditTitleText(current.title);
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (activeTabId === null) return;
+    await updateMeeting(activeTabId, editTitleText);
+    setIsEditingTitle(false);
+    // Refresh meetings list to update pill text
+    const newMeetings = await getMeetings();
+    setMeetings(newMeetings);
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    await deleteTask(taskId);
+    if (activeTabId) {
+      const uTasks = await getTasksForMeeting(activeTabId);
+      setTasks(uTasks);
+    }
+  };
+
+  const handleStartEditTask = (task: any) => {
+    setEditingTaskId(task.id);
+    setEditTaskText(task.content);
+  };
+
+  const handleSaveTask = async (taskId: number) => {
+    await updateTask(taskId, editTaskText);
+    setEditingTaskId(null);
+    if (activeTabId) {
+      const uTasks = await getTasksForMeeting(activeTabId);
+      setTasks(uTasks);
+    }
+  };
   return (
     <SafeAreaView style={modalStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
@@ -154,30 +229,66 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
         {/* Section Header */}
         <View style={modalStyles.sectionHeader}>
-          <Text style={modalStyles.sectionTitle}>{meetings[activeTabIndex]?.title}</Text>
-          <View style={modalStyles.sectionIcons}>
-            <TouchableOpacity style={modalStyles.iconButton}>
-              <Feather name="edit-2" size={24} color={colors.textWhite} />
-            </TouchableOpacity>
-            <TouchableOpacity style={modalStyles.iconButton}>
-              <Feather name="trash-2" size={24} color={colors.textWhite} />
-            </TouchableOpacity>
-          </View>
+          {isEditingTitle ? (
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <TextInput
+                style={[modalStyles.sectionTitle, { flex: 1, borderBottomWidth: 1, borderBottomColor: colors.headerBg, padding: 0 }]}
+                value={editTitleText}
+                onChangeText={setEditTitleText}
+                autoFocus
+                onSubmitEditing={handleSaveTitle}
+              />
+              <TouchableOpacity onPress={handleSaveTitle}>
+                <Feather name="check" size={24} color={colors.headerBg} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <Text style={modalStyles.sectionTitle}>{meetings.find(m => m.id === activeTabId)?.title || "No Meetings"}</Text>
+              {activeTabId && (
+                <View style={modalStyles.sectionIcons}>
+                  <TouchableOpacity style={modalStyles.iconButton} onPress={handleStartEditTitle}>
+                    <Feather name="edit-2" size={24} color={colors.textWhite} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={modalStyles.iconButton} onPress={handleDeleteMeeting}>
+                    <Feather name="trash-2" size={24} color={colors.textWhite} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
         </View>
 
         {/* Task List - Now using modern CARDS */}
         <View style={modalStyles.taskList}>
           {tasks.map((task: any, index: number) => (
             <View key={index} style={modalStyles.taskCard}>
-              <Text style={modalStyles.taskText}>{task.content}</Text>
-              <View style={modalStyles.taskIcons}>
-                <TouchableOpacity style={modalStyles.actionIcon}>
-                  <Feather name="edit" size={20} color={colors.textDim} />
-                </TouchableOpacity>
-                <TouchableOpacity style={modalStyles.actionIcon}>
-                  <Ionicons name="close-circle-outline" size={24} color={colors.textDim} />
-                </TouchableOpacity>
-              </View>
+              {editingTaskId === task.id ? (
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <TextInput
+                    style={[modalStyles.taskText, { flex: 1, borderBottomWidth: 1, borderBottomColor: colors.textDim, padding: 0 }]}
+                    value={editTaskText}
+                    onChangeText={setEditTaskText}
+                    autoFocus
+                    onSubmitEditing={() => handleSaveTask(task.id)}
+                  />
+                  <TouchableOpacity onPress={() => handleSaveTask(task.id)}>
+                    <Feather name="check" size={24} color={colors.textWhite} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <Text style={modalStyles.taskText}>{task.content}</Text>
+                  <View style={modalStyles.taskIcons}>
+                    <TouchableOpacity style={modalStyles.actionIcon} onPress={() => handleStartEditTask(task)}>
+                      <Feather name="edit" size={20} color={colors.textDim} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={modalStyles.actionIcon} onPress={() => handleDeleteTask(task.id)}>
+                      <Ionicons name="close-circle-outline" size={24} color={colors.textDim} />
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </View>
           ))}
         </View>
