@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Entypo, Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
@@ -67,8 +67,11 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       setActiveTabIndex(newIndex);
 
       // 3. Trigger Async Action Extraction
-      // We do this silently in the background
-      extractActionItems(newMeeting.transcription || newMeeting.title /* fallback to title if needed */).then(async (actions) => {
+      Alert.alert('Debug', `Triggering extraction for: ${newMeeting.title}`);
+
+      extractActionItems(newMeeting.transcription || newMeeting.title).then(async (actions) => {
+        Alert.alert('Debug', `Extraction finished. Found ${actions ? actions.length : 0} actions.`);
+
         if (actions && actions.length > 0) {
           console.log('Extracted actions:', actions);
           for (const action of actions) {
@@ -78,9 +81,13 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
           if (activeTabId === newMeeting.id) {
             const updatedTasks = await getTasksForMeeting(newMeeting.id);
             setTasks(updatedTasks);
+            Alert.alert('Success', 'Tasks updated directly!');
           }
         }
-      }).catch(err => console.error('Extraction failed:', err));
+      }).catch(err => {
+        console.error('Extraction failed:', err);
+        Alert.alert('Error', 'Extraction failed: ' + JSON.stringify(err));
+      });
     }
   };
 

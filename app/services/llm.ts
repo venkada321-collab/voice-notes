@@ -2,6 +2,7 @@ import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system';
 import { Paths } from 'expo-file-system'; // Use Paths directly
 import { initLlama, LlamaContext } from 'llama.rn';
+import { Alert } from 'react-native';
 
 let context: LlamaContext | null = null;
 const MODEL_NAME = 'Qwen3-0.6B-Q5_K_M.gguf';
@@ -12,56 +13,48 @@ export const initModel = async () => {
 
     try {
         console.log('Initializing Qwen model using initLlama helper...');
+        Alert.alert('LLM Init', 'Initializing Qwen model...'); // DEBUG ALERT
 
         const modelAsset = require('../../assets/models/llm/Qwen3-0.6B-Q5_K_M.gguf');
         const asset = Asset.fromModule(modelAsset);
         await asset.downloadAsync();
 
-        if (!asset.localUri) {
-            throw new Error('Model asset localUri is null');
-        }
+        // ... (truncated for brevity, keep existing logic)
+        if (!asset.localUri) throw new Error('Model asset localUri is null');
 
-        // Get document directory path using new API
         const docDir = Paths.document;
         if (!docDir) throw new Error('Document directory not found');
-
-        // Ensure we have a standard path (remove file:// scheme if present)
-        const docPath = docDir.uri.startsWith('file://') ? docDir.uri.slice(7) : docDir.uri;
-        const storedPath = `${docPath}/${MODEL_NAME}`;
-
-        // Helper to copy if missing
-        // We use the legacy FileSystem for copyAsync as it is handy, assuming it still works with URIs
-        // Or we can use the new API if known? let's stick to legacy for simple copy since we have the URI.
-        // Actually, FileSystem.getInfoAsync/copyAsync works with URIs.
-
         const destinationUri = docDir.uri + '/' + MODEL_NAME;
-        const info = await FileSystem.getInfoAsync(destinationUri);
 
+        // ... file copy logic ...
+        const info = await FileSystem.getInfoAsync(destinationUri);
         if (!info.exists) {
-            console.log('Copying model to:', destinationUri);
-            await FileSystem.copyAsync({
-                from: asset.localUri,
-                to: destinationUri
-            });
+            Alert.alert('LLM Init', 'Copying model asset...');
+            await FileSystem.copyAsync({ from: asset.localUri, to: destinationUri });
         }
 
-        // initLlama handles 'file://' internally if passed, but usually best to pass without for native libs
-        // Looking at source, it handles it.
         context = await initLlama({
             model: destinationUri,
             n_ctx: 2048,
             n_threads: 4,
         });
         console.log('Qwen model initialized successfully.');
-    } catch (e) {
+        Alert.alert('LLM Init', 'Model ready!');
+    } catch (e: any) {
         console.error('Failed to init Qwen model:', e);
+        Alert.alert('LLM Error', 'Init failed: ' + e.message);
         throw e;
     }
 };
 
 // Extract action items
 export const extractActionItems = async (transcription: string) => {
+    console.log('extractActionItems called with:', transcription.slice(0, 50) + '...');
+    Alert.alert('LLM Inference', `Starting extraction on text length: ${transcription.length}`);
+
     if (!context) {
+        console.log('Context missing, initializing model...');
+        Alert.alert('LLM Inference', 'Context missing, checking init...');
         await initModel();
     }
 
@@ -85,15 +78,20 @@ ${transcription}
         });
 
         console.log('Model output:', result.text);
+        Alert.alert('LLM Output', `Raw result: ${result.text.slice(0, 100)}...`); // Show first 100 chars
 
         // clean up output to find JSON array
         const jsonMatch = result.text.match(/\[.*\]/s);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            const parsed = JSON.parse(jsonMatch[0]);
+            Alert.alert('LLM Success', `Parsed ${parsed.length} items`);
+            return parsed;
         }
+        Alert.alert('LLM Warning', 'No JSON found in output');
         return [];
-    } catch (e) {
+    } catch (e: any) {
         console.error('Inference failed:', e);
+        Alert.alert('LLM Error', 'Inference crashed: ' + e.message);
         return [];
     }
 };
