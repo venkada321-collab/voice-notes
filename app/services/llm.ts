@@ -78,19 +78,45 @@ ${transcription}
         const result = await context!.completion({
             prompt,
             n_predict: 1024, // Increased limit for thinking process
-            temperature: 0.7,
+            temperature: 0.6,
+            top_p: 0.95,
+            top_k: 20,
+            min_p: 0
         });
 
         console.log('Model output:', result.text);
-        Alert.alert('LLM Output', `Raw result: ${result.text.slice(0, 100)}...`); // Show first 100 chars
+        Alert.alert('LLM Output', `Raw result: ${result.text}`); // Show full output
 
-        // clean up output to find JSON array
+        // Strategy 1: Greedy match (find everything between first [ and last ])
         const jsonMatch = result.text.match(/\[.*\]/s);
         if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            Alert.alert('LLM Success', `Parsed ${parsed.length} items`);
-            return parsed;
+            try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                Alert.alert('LLM Success', `Parsed ${parsed.length} items`);
+                return parsed;
+            } catch (e) {
+                console.log('Greedy parsing failed. Trying last block fallback...');
+            }
         }
+
+        // Strategy 2: Fallback to the *last* bracketed block
+        // (This handles cases where thinking process puts brackets before the final answer)
+        const lastEnd = result.text.lastIndexOf(']');
+        if (lastEnd !== -1) {
+            const lastStart = result.text.lastIndexOf('[', lastEnd);
+            if (lastStart !== -1) {
+                const candidate = result.text.substring(lastStart, lastEnd + 1);
+                console.log('Fallback candidate:', candidate);
+                try {
+                    const parsed = JSON.parse(candidate);
+                    Alert.alert('LLM Success (Fallback)', `Parsed ${parsed.length} items`);
+                    return parsed;
+                } catch (e) {
+                    console.error('Fallback parsing failed:', e);
+                }
+            }
+        }
+
         Alert.alert('LLM Warning', 'No JSON found in output');
         return [];
     } catch (e: any) {

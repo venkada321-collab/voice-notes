@@ -145,8 +145,15 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                     </View>
 
                     <Text style={styles.inputLabel}>Transcription:</Text>
-                    <ScrollView style={styles.transcriptionBox}>
-                        <Text style={styles.transcriptionText}>{transcription} {partialResult}</Text>
+                    <ScrollView style={styles.transcriptionBox} keyboardShouldPersistTaps="handled">
+                        <TextInput
+                            style={styles.transcriptionInput}
+                            value={transcription}
+                            onChangeText={setTranscription}
+                            multiline
+                            scrollEnabled={false} // Let the ScrollView handle scrolling
+                            textAlignVertical="top"
+                        />
                     </ScrollView>
 
                     <TouchableOpacity onPress={handleSave} style={styles.checkButton}>
@@ -347,9 +354,11 @@ const styles = StyleSheet.create({
         padding: 10,
         marginBottom: 20,
     },
-    transcriptionText: {
+    transcriptionInput: {
         fontSize: 14,
         color: '#333',
+        minHeight: 100,
+        textAlignVertical: 'top',
     },
     checkButton: {
         alignSelf: 'center',

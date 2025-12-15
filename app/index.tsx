@@ -121,18 +121,22 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive", onPress: async () => {
-          await deleteMeeting(activeTabId);
-          const newMeetings = await getMeetings();
-          setMeetings(newMeetings);
+          try {
+            await deleteMeeting(activeTabId);
+            const newMeetings = await getMeetings();
+            setMeetings(newMeetings);
+            Alert.alert('Success', 'Meeting deleted');
 
-          if (newMeetings.length > 0) {
-            // Fallback to latest or index 0
-            const next = newMeetings[Math.max(0, newMeetings.length - 1)];
-            setActiveTabIndex(newMeetings.indexOf(next));
-            setActiveTabId(next.id);
-          } else {
-            setActiveTabId(null);
-            setActiveTabIndex(0);
+            if (newMeetings.length > 0) {
+              const next = newMeetings[Math.max(0, newMeetings.length - 1)];
+              setActiveTabIndex(newMeetings.indexOf(next));
+              setActiveTabId(next.id);
+            } else {
+              setActiveTabId(null);
+              setActiveTabIndex(0);
+            }
+          } catch (err: any) {
+            Alert.alert('Error', 'Failed to delete meeting: ' + err.message);
           }
         }
       }
@@ -148,18 +152,27 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
   const handleSaveTitle = async () => {
     if (activeTabId === null) return;
-    await updateMeeting(activeTabId, editTitleText);
-    setIsEditingTitle(false);
-    // Refresh meetings list to update pill text
-    const newMeetings = await getMeetings();
-    setMeetings(newMeetings);
+    try {
+      await updateMeeting(activeTabId, editTitleText);
+      setIsEditingTitle(false);
+      const newMeetings = await getMeetings();
+      setMeetings(newMeetings);
+      Alert.alert('Success', 'Meeting updated');
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to update meeting: ' + err.message);
+    }
   };
 
   const handleDeleteTask = async (taskId: number) => {
-    await deleteTask(taskId);
-    if (activeTabId) {
-      const uTasks = await getTasksForMeeting(activeTabId);
-      setTasks(uTasks);
+    try {
+      await deleteTask(taskId);
+      if (activeTabId) {
+        const uTasks = await getTasksForMeeting(activeTabId);
+        setTasks(uTasks);
+      }
+      Alert.alert('Success', 'Task deleted');
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to delete task: ' + err.message);
     }
   };
 
@@ -169,11 +182,16 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   };
 
   const handleSaveTask = async (taskId: number) => {
-    await updateTask(taskId, editTaskText);
-    setEditingTaskId(null);
-    if (activeTabId) {
-      const uTasks = await getTasksForMeeting(activeTabId);
-      setTasks(uTasks);
+    try {
+      await updateTask(taskId, editTaskText);
+      setEditingTaskId(null);
+      if (activeTabId) {
+        const uTasks = await getTasksForMeeting(activeTabId);
+        setTasks(uTasks);
+      }
+      Alert.alert('Success', 'Task updated');
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to update task: ' + err.message);
     }
   };
   return (
