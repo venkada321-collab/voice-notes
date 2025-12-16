@@ -1,4 +1,4 @@
-package com.anonymous.VoiceNotes
+package com.anonymous.VoiceFission
 
 import android.app.Application
 import android.content.res.Configuration

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "VoiceNotes",
-    "slug": "VoiceNotes",
+    "name": "VoiceFission",
+    "slug": "VoiceFission",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "voicenotes",
+    "scheme": "voicefission",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.VoiceNotes"
+      "bundleIdentifier": "com.anonymous.VoiceFission"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.VoiceNotes"
+      "package": "com.anonymous.VoiceFission"
     },
     "web": {
       "bundler": "metro",
@@ -57,7 +57,8 @@
             "./assets/models/model"
           ]
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

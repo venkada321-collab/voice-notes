@@ -4,7 +4,7 @@ import * as SQLite from 'expo-sqlite';
 let db: any;
 
 export const initDatabase = async () => {
-  db = await SQLite.openDatabaseAsync('voiceNotes.db');
+  db = await SQLite.openDatabaseAsync('fission.db');
   // Create two tables: one for Pills (Meetings), one for Tasks
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS meetings (

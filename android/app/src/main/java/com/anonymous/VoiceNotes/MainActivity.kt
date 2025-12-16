@@ -1,4 +1,4 @@
-package com.anonymous.VoiceNotes
+package com.anonymous.VoiceFission
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
