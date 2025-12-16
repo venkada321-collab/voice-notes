@@ -368,7 +368,7 @@ export default function App(): JSX.Element {
           {/* Container for the image to add border/glow */}
           <View style={homeStyles.imageContainer}>
             <Image
-              source={require('../assets/images/subatomic_logo.jpg')}
+              source={require('../assets/images/subatomic_logo.png')}
               style={homeStyles.logoImage}
             />
           </View>
