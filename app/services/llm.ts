@@ -12,7 +12,7 @@ export const initModel = async () => {
 
     try {
 
-        Alert.alert('LLM Init', 'Initializing Qwen model...'); // DEBUG ALERT
+
 
         const modelAsset = require('../../assets/models/llm/Qwen3-0.6B-Q5_K_M.gguf');
         const asset = Asset.fromModule(modelAsset);
@@ -26,7 +26,7 @@ export const initModel = async () => {
         const destFile = new ExpoFile(docDir, MODEL_NAME);
 
         if (!destFile.exists) {
-            Alert.alert('LLM Init', 'Copying model asset...');
+
             if (asset.localUri) {
                 const sourceFile = new ExpoFile(asset.localUri);
                 sourceFile.copy(destFile);
@@ -43,7 +43,7 @@ export const initModel = async () => {
             n_threads: 4,
         });
 
-        Alert.alert('LLM Init', 'Model ready!');
+
     } catch (e: any) {
         console.error('Failed to init Qwen model:', e);
         Alert.alert('LLM Error', 'Init failed: ' + e.message);
@@ -54,11 +54,11 @@ export const initModel = async () => {
 // Extract action items
 export const extractActionItems = async (transcription: string) => {
 
-    Alert.alert('LLM Inference', `Starting extraction on text length: ${transcription.length}`);
+
 
     if (!context) {
 
-        Alert.alert('LLM Inference', 'Context missing, checking init...');
+
         await initModel();
     }
 
@@ -85,14 +85,14 @@ ${transcription}
         });
 
 
-        Alert.alert('LLM Output', `Raw result: ${result.text}`); // Show full output
+
 
         // Strategy 1: Greedy match (find everything between first [ and last ])
         const jsonMatch = result.text.match(/\[.*\]/s);
         if (jsonMatch) {
             try {
                 const parsed = JSON.parse(jsonMatch[0]);
-                Alert.alert('LLM Success', `Parsed ${parsed.length} items`);
+
                 return parsed;
             } catch (e) {
 
@@ -109,7 +109,7 @@ ${transcription}
 
                 try {
                     const parsed = JSON.parse(candidate);
-                    Alert.alert('LLM Success (Fallback)', `Parsed ${parsed.length} items`);
+
                     return parsed;
                 } catch (e) {
                     console.error('Fallback parsing failed:', e);
