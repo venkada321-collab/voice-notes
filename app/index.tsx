@@ -97,7 +97,6 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
           const actions = await extractActionItems(newMeeting.transcription || newMeeting.title);
 
           if (actions && actions.length > 0) {
-            console.log('Extracted actions:', actions);
             for (const action of actions) {
               await addTask(newMeeting.id, action);
             }
@@ -377,7 +376,6 @@ export default function App(): JSX.Element {
 
         {/* "by" Section with Improved Image Style */}
         <View style={homeStyles.bySection}>
-          <Text style={homeStyles.byText}>by</Text>
           {/* Container for the image to add border/glow */}
           <View style={homeStyles.imageContainer}>
             <Image
@@ -613,11 +611,13 @@ const modalStyles = StyleSheet.create({
     color: colors.textWhite,
     fontSize: 18,
     fontWeight: '600',
+    flex: 1, // Ensure text wraps and doesn't push icons
   },
   taskIcons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    flexShrink: 0, // Ensure icons don't shrink
   },
   actionIcon: {
     padding: 4,

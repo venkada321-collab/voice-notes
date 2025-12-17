@@ -25,10 +25,10 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
     useEffect(() => {
         const loadModel = async () => {
             try {
-                console.log('Loading usage model...');
+
                 await Vosk.loadModel('model'); // Path relative to assets/models, defined in app.json
                 setIsModelLoaded(true);
-                console.log('Model loaded.');
+
             } catch (e: any) {
                 console.error('Failed to load Vosk model', e);
                 Alert.alert('Error', 'Failed to load offline transcription model: ' + (e.message || JSON.stringify(e)));
@@ -38,7 +38,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
 
         // Event Listeners
         const resultSub = Vosk.onResult((res) => {
-            console.log('Result:', res);
+
             setTranscription(prev => prev + " " + res);
             setPartialResult('');
         });
@@ -66,7 +66,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
             return;
         }
         try {
-            console.log('Starting Vosk...');
+
             await Vosk.start();
             setStatus('recording');
         } catch (e) {

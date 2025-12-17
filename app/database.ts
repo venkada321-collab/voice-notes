@@ -22,17 +22,8 @@ export const initDatabase = async () => {
     );
   `);
 
-  // --- SEED DATA (Only runs if empty) ---
-  const result = await db.getAllSync('SELECT * FROM meetings');
-  if (result != null) {
-    if (result.length === 0) {
-      await db.execAsync(`
-        INSERT INTO meetings (title) VALUES ('Meeting 1'), ('Meeting 2'), ('Meeting 3');
-        INSERT INTO tasks (meeting_id, content) VALUES 
-        (1, 'Do this'), (1, 'Do that'), (2, 'Review notes'), (3, 'Email client');
-    `);
-    }
-  }
+  // --- SEED DATA REMOVED ---
+  // Default behavior: Start empty.
 };
 
 // --- API FUNCTIONS ---
