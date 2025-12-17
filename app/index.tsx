@@ -80,7 +80,7 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
     fetchTasks();
   }, [activeTabId]); // Re-run whenever activeTabId changes
 
-  const handleMeetingSaved = async () => {
+  const handleMeetingSaved = async (transcription: string) => {
     // 1. Show Processing Screen
     setIsProcessing(true);
 
@@ -94,7 +94,8 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
         // 3. Trigger Async Action Extraction (Wait for it now)
         try {
-          const actions = await extractActionItems(newMeeting.transcription || newMeeting.title);
+          // Use the ephemeral transcription passed from RecordModal
+          const actions = await extractActionItems(transcription || newMeeting.title);
 
           if (actions && actions.length > 0) {
             for (const action of actions) {
@@ -371,8 +372,30 @@ export default function App(): JSX.Element {
       {/* --- Homepage Content --- */}
       <View style={homeStyles.contentCenter}>
 
-        {/* Main Title */}
-        <Text style={homeStyles.title}>FISSION</Text>
+        {/* Main Title - Modernized */}
+        <View style={{ marginBottom: 40, alignItems: 'center' }}>
+          <Text style={{
+            fontSize: 16,
+            fontWeight: '600',
+            color: colors.textDim,
+            letterSpacing: 8,
+            textTransform: 'uppercase',
+            marginBottom: 5
+          }}>VOICE</Text>
+          <Text style={{
+            fontSize: 52,
+            fontWeight: '900',
+            color: colors.textWhite,
+            letterSpacing: 2,
+            // Text Shadow for Glow Effect
+            textShadowColor: colors.goldAccent,
+            textShadowOffset: { width: 0, height: 0 },
+            textShadowRadius: 20,
+          }}>
+            FISSION
+            <Text style={{ color: colors.goldAccent }}>.</Text>
+          </Text>
+        </View>
 
         {/* "by" Section with Improved Image Style */}
         <View style={homeStyles.bySection}>
@@ -497,7 +520,7 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: 50, // Increased to avoid status bar overlap
     paddingBottom: 24,
     backgroundColor: colors.headerBg,
   },
@@ -569,6 +592,8 @@ const modalStyles = StyleSheet.create({
     fontSize: 22,
     color: colors.headerBg,
     fontWeight: '800',
+    flex: 1, // Wraps long titles
+    marginRight: 10,
   },
   sectionIcons: {
     flexDirection: 'row',
@@ -576,6 +601,7 @@ const modalStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.1)',
     padding: 8,
     borderRadius: 12,
+    flexShrink: 0, // Keeps icons visible
   },
   iconButton: {
     padding: 4,

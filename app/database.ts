@@ -9,8 +9,7 @@ export const initDatabase = async () => {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS meetings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      transcription TEXT
+      title TEXT NOT NULL
     );
     
     CREATE TABLE IF NOT EXISTS tasks (
@@ -58,11 +57,11 @@ export const deleteTask = async (taskId: number) => {
   }
 };
 
-// 5. Add a new Meeting (Pill)
-export const addMeeting = async (title: string, transcription: string = '') => {
-  const statement = await db.prepareAsync('INSERT INTO meetings (title, transcription) VALUES (?, ?)');
+// 5. Add a new Meeting (Pill) - Transcription is now ephemeral and not saved
+export const addMeeting = async (title: string) => {
+  const statement = await db.prepareAsync('INSERT INTO meetings (title) VALUES (?)');
   try {
-    await statement.executeAsync([title, transcription]);
+    await statement.executeAsync([title]);
   } finally {
     await statement.finalizeAsync();
   }

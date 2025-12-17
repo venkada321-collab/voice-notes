@@ -14,7 +14,7 @@ const colors = {
     check: '#000000',
 };
 
-export default function RecordModal({ onClose, onSave }: { onClose: () => void, onSave: () => void }) {
+export default function RecordModal({ onClose, onSave }: { onClose: () => void, onSave: (transcription: string) => void }) {
     const [status, setStatus] = useState<'idle' | 'recording' | 'paused' | 'done'>('idle');
     const [meetingName, setMeetingName] = useState('');
     const [transcription, setTranscription] = useState('');
@@ -115,8 +115,8 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
             Alert.alert("Title required", "Please enter a name for this recording.");
             return;
         }
-        await addMeeting(meetingName, transcription.trim());
-        onSave(); // Refresh data in parent
+        await addMeeting(meetingName); // Only save title to DB
+        onSave(transcription.trim()); // Pass transcript to parent for processing
         onClose();
     }
 
@@ -145,6 +145,8 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                     </View>
 
                     <Text style={styles.inputLabel}>Transcription:</Text>
+                    <Text style={styles.warningText}>⚠️ Important: Copy text now if you want to keep the raw version.</Text>
+                    <Text style={styles.warningText}>✏️ Tip: Verify and modify any wrong interpretations below before saving.</Text>
                     <ScrollView style={styles.transcriptionBox} keyboardShouldPersistTaps="handled">
                         <TextInput
                             style={styles.transcriptionInput}
@@ -363,5 +365,11 @@ const styles = StyleSheet.create({
     checkButton: {
         alignSelf: 'center',
         marginTop: 10,
+    },
+    warningText: {
+        fontSize: 12,
+        color: '#FF3B30', // Red/Orange warning color
+        fontStyle: 'italic',
+        marginBottom: 8,
     },
 });
