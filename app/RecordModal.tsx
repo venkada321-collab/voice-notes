@@ -39,9 +39,11 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                     if (Platform.OS === 'android') {
                         // Android: Extract directly from Assets
                         try {
-                            await unzipAssets('vosk-model.zip', docDir.uri);
-                        } catch (e) {
+                            const targetPath = docDir.uri.replace('file://', '');
+                            await unzipAssets('vosk-model.zip', targetPath);
+                        } catch (e: any) {
                             console.error('Vosk unzip failed', e);
+                            Alert.alert('Error', 'Failed to unzip models: ' + e.message);
                         }
                     } else {
                         // iOS/Dev Fallback

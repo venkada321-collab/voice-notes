@@ -24,7 +24,8 @@ export const initModel = async () => {
             if (Platform.OS === 'android') {
                 // Android: Extract directly from Assets (Install-time pack)
                 try {
-                    await unzipAssets('model.zip', docDir.uri);
+                    const targetPath = docDir.uri.replace('file://', '');
+                    await unzipAssets('model.zip', targetPath);
                 } catch (err) {
                     throw new Error("Failed to unzip Qwen model from assets: " + err);
                 }
