@@ -3,7 +3,7 @@ import { File as ExpoFile, Paths } from 'expo-file-system';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Vosk from 'react-native-vosk';
-import { unzip } from 'react-native-zip-archive';
+import { unzip, unzipAssets } from 'react-native-zip-archive';
 import { addMeeting } from './database';
 
 const colors = {
@@ -36,27 +36,28 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                 if (!modelDir.exists) {
                     // Extracting Speech Model... (Silently)
 
-                    const zipName = 'vosk-model.zip';
-                    const tempZip = new ExpoFile(Paths.cache, zipName);
-
-                    let assetUri = '';
                     if (Platform.OS === 'android') {
-                        assetUri = 'file:///android_asset/vosk-model.zip';
+                        // Android: Extract directly from Assets
+                        try {
+                            await unzipAssets('vosk-model.zip', docDir.uri);
+                        } catch (e) {
+                            console.error('Vosk unzip failed', e);
+                        }
                     } else {
-                        assetUri = Paths.bundle + '/' + zipName;
-                    }
+                        // iOS/Dev Fallback
+                        const zipName = 'vosk-model.zip';
+                        const tempZip = new ExpoFile(Paths.cache, zipName);
+                        const assetUri = Paths.bundle + '/' + zipName;
+                        const assetFile = new ExpoFile(assetUri);
 
-                    const assetFile = new ExpoFile(assetUri);
-                    if (Platform.OS === 'android' || assetFile.exists) {
-                        await assetFile.copy(tempZip);
-                    } else {
-                        // Fallback: try loading assuming it's already there or error
-                        // verification logic
-                    }
+                        if (assetFile.exists) {
+                            await assetFile.copy(tempZip);
+                        }
 
-                    if (tempZip.exists) {
-                        await unzip(tempZip.uri, docDir.uri);
-                        await tempZip.delete();
+                        if (tempZip.exists) {
+                            await unzip(tempZip.uri, docDir.uri);
+                            await tempZip.delete();
+                        }
                     }
                 }
 
