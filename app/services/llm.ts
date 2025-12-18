@@ -1,7 +1,7 @@
-import { Asset } from 'expo-asset';
 import { File as ExpoFile, Paths } from 'expo-file-system'; // Alias to avoid global File conflict
 import { initLlama, LlamaContext } from 'llama.rn';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import { unzip } from 'react-native-zip-archive';
 
 let context: LlamaContext | null = null;
 const MODEL_NAME = 'Qwen3-0.6B-Q5_K_M.gguf';
@@ -14,25 +14,53 @@ export const initModel = async () => {
 
 
 
-        const modelAsset = require('../../assets/models/llm/Qwen3-0.6B-Q5_K_M.gguf');
-        const asset = Asset.fromModule(modelAsset);
-        await asset.downloadAsync();
-
-        // ... (truncated for brevity, keep existing logic)
-        if (!asset.localUri) throw new Error('Model asset localUri is null');
-
         const docDir = Paths.document;
         if (!docDir) throw new Error('Document directory not found');
         const destFile = new ExpoFile(docDir, MODEL_NAME);
 
         if (!destFile.exists) {
+            // First run: Extracting AI model... (Silently)
 
-            if (asset.localUri) {
-                const sourceFile = new ExpoFile(asset.localUri);
-                sourceFile.copy(destFile);
+            // 1. Define source zip path
+            // On Android, we access the asset pack via android_asset
+            // We need to copy it to a temp location first because unzip might not read stream from generic asset URI directly consistently
+            const zipName = 'model.zip';
+            const tempZip = new ExpoFile(Paths.cache, zipName);
+
+            // 2. Logic to copy zip
+            let assetUri = '';
+            if (Platform.OS === 'android') {
+                assetUri = 'file:///android_asset/model.zip';
             } else {
-                throw new Error('Asset localUri is null/undefined');
+                // Fallback for iOS/Dev (Requires manual placement or separate handling)
+                // For now, assume it's bundled similarly or locally available
+                assetUri = Paths.bundle + '/' + zipName;
             }
+
+            // 3. Copy Zip to Cache
+            const assetFile = new ExpoFile(assetUri);
+            if (Platform.OS === 'android' || assetFile.exists) {
+                await assetFile.copy(tempZip);
+            } else {
+                throw new Error(`Model zip not found at ${assetUri}`);
+            }
+
+            // 4. Unzip to Document Directory
+            if (!tempZip.exists) throw new Error("Failed to copy zip to cache");
+
+            try {
+                await unzip(tempZip.uri, docDir.uri); // Unzips directly into docDir
+            } catch (err) {
+                throw new Error("Failed to unzip Qwen model: " + err);
+            } finally {
+                // Cleanup zip
+                await tempZip.delete();
+            }
+        }
+
+        // Double check existence after unzip
+        if (!destFile.exists) {
+            throw new Error(`Model file ${MODEL_NAME} not found after extraction`);
         }
 
         const destinationUri = destFile.uri;

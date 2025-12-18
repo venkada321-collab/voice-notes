@@ -36,4 +36,5 @@ rootProject.name = 'Fission'
 expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
+include ':llm_assets'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
