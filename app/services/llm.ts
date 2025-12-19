@@ -56,7 +56,7 @@ export const initModel = async () => {
             throw new Error(`Model file ${MODEL_NAME} not found after extraction`);
         }
 
-        const destinationUri = destFile.uri;
+        const destinationUri = destFile.uri.replace('file://', '');
 
         context = await initLlama({
             model: destinationUri,

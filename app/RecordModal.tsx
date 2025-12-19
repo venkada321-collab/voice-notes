@@ -70,7 +70,8 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                 // The library usually looks in external files dir if passed a name, but we can pass full path.
                 // Let's try passing the full path.
 
-                await Vosk.loadModel(modelDir.uri);
+                const modelPath = modelDir.uri.replace('file://', '');
+                await Vosk.loadModel(modelPath);
                 setIsModelLoaded(true);
 
             } catch (e: any) {
