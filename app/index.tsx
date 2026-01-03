@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
-import { Entypo, Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
 import { addTask, deleteMeeting, deleteTask, getMeetings, getTasksForMeeting, initDatabase, updateMeeting, updateTask } from './database';
 import ProcessingScreen from './ProcessingScreen';
@@ -382,9 +382,7 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
       {/* 4. Bottom Navigation Bar */}
       <View style={modalStyles.bottomNav}>
-        <TouchableOpacity activeOpacity={0.7}>
-          <Entypo name="home" size={30} color={colors.goldAccent} />
-        </TouchableOpacity>
+
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setShowRecordModal(true)}
@@ -447,14 +445,7 @@ export default function App(): JSX.Element {
 
         {/* Main Title - Modernized */}
         <View style={{ marginBottom: 40, alignItems: 'center' }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: colors.textDim,
-            letterSpacing: 8,
-            textTransform: 'uppercase',
-            marginBottom: 5
-          }}>VOICE</Text>
+
           <Text style={{
             fontSize: 52,
             fontWeight: '900',
@@ -482,16 +473,28 @@ export default function App(): JSX.Element {
         </View>
       </View>
 
-      {/* Bottom "START" Button */}
+      {/* Bottom "START" Button - Modern "Power On" Style */}
       <View style={homeStyles.bottomContainer}>
         <TouchableOpacity
-          style={homeStyles.startButton}
-          activeOpacity={0.8}
-          onPress={() => setShowModal(true)} // Open the modal on press
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: colors.headerBg,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: colors.goldAccent,
+            shadowColor: colors.goldAccent,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.8,
+            shadowRadius: 15,
+            elevation: 15,
+          }}
+          activeOpacity={0.7}
+          onPress={() => setShowModal(true)}
         >
-          <Text style={homeStyles.startButtonText}>START</Text>
-          {/* Added an icon for a modern feel */}
-          <Feather name="arrow-right-circle" size={24} color={colors.headerBg} style={{ marginLeft: 10 }} />
+          <Feather name="power" size={32} color={colors.goldAccent} />
         </TouchableOpacity>
       </View>
 
@@ -559,26 +562,7 @@ const homeStyles = StyleSheet.create({
     padding: 30,
     paddingBottom: 50, // Extra padding for bottom screens
   },
-  startButton: {
-    backgroundColor: colors.goldAccent,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 18,
-    borderRadius: 30,
-    // Prominent shadow for a "clickable" feel
-    shadowColor: colors.goldAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  startButtonText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.headerBg, // Dark text on gold background
-    letterSpacing: 1,
-  },
+
 });
 
 // --- Modal Styles (from previous design) ---
@@ -730,7 +714,7 @@ const modalStyles = StyleSheet.create({
     height: 80,
     backgroundColor: colors.navBg,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: 10,
     borderTopWidth: 1,

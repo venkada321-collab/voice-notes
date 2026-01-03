@@ -1,4 +1,5 @@
 import { File as ExpoFile, Paths } from 'expo-file-system'; // Alias to avoid global File conflict
+import * as FileSystem from 'expo-file-system/legacy'; // Fix: Use legacy API for download
 import { initLlama, LlamaContext } from 'llama.rn';
 import { Alert } from 'react-native';
 
@@ -24,16 +25,20 @@ export const initModel = async (onStatus?: (msg: string) => void) => {
             const MODEL_URL = "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q5_K_M.gguf?download=true";
 
             try {
-                // New File System API (SDK 53+)
-                // We use the File object's downloadAsync method
-                const result = await destFile.downloadAsync(MODEL_URL);
+                // Use legacy API to download
+                const downloadResumable = FileSystem.createDownloadResumable(
+                    MODEL_URL,
+                    destFile.uri,
+                    {},
+                );
+
+                const result = await downloadResumable.downloadAsync();
 
                 if (!result || !result.uri) {
                     throw new Error("Download failed");
                 }
 
                 onStatus?.('Neural Core Ready');
-                // Alert.alert('Success', 'Neural Core ready.');
 
             } catch (e: any) {
                 console.error("Download failed", e);
