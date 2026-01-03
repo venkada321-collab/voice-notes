@@ -6,6 +6,14 @@ import { Alert } from 'react-native';
 let context: LlamaContext | null = null;
 const MODEL_NAME = 'Qwen3-0.6B-Q5_K_M.gguf';
 
+// Check if model exists
+export const checkModelExists = async () => {
+    const docDir = Paths.document;
+    if (!docDir) return false;
+    const destFile = new ExpoFile(docDir, MODEL_NAME);
+    return destFile.exists;
+};
+
 // Initialize the model
 export const initModel = async (onStatus?: (msg: string) => void) => {
     if (context) return; // Already initialized

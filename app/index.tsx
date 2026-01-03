@@ -7,7 +7,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { addTask, deleteMeeting, deleteTask, getMeetings, getTasksForMeeting, initDatabase, updateMeeting, updateTask } from './database';
 import ProcessingScreen from './ProcessingScreen';
 import RecordModal from './RecordModal';
-import { extractActionItems } from './services/llm';
+import { checkModelExists, extractActionItems, initModel } from './services/llm';
 
 // --- Shared Color Palette ---
 const colors = {
@@ -61,11 +61,11 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   };
 
   useEffect(() => {
-    const init = async () => {
+    const loadInitialData = async () => {
       await initDatabase(); // Ensure DB is ready
       await loadMeetings();
     };
-    init();
+    loadInitialData();
   }, []);
 
   // 3. FETCH TASKS when Tab changes
@@ -427,9 +427,46 @@ export default function App(): JSX.Element {
   // State to control whether the modal is visible
   const [showModal, setShowModal] = useState(false);
 
+  // Processing state for the main screen (during initial download)
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
+
+  const handleStartPress = async () => {
+    const hasModel = await checkModelExists();
+
+    if (hasModel) {
+      setShowModal(true);
+    } else {
+      Alert.alert(
+        "Download Required",
+        "Advanced analysis requires a one-time download of the Neural Core (444MB). Proceed?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Download",
+            onPress: async () => {
+              setIsProcessing(true);
+              setProcessingStatus("Initializing Neural Core...");
+              try {
+                await initModel((status: string) => setProcessingStatus(status));
+                setIsProcessing(false);
+                setShowModal(true); // Auto-open after success
+              } catch (e) {
+                setIsProcessing(false);
+                Alert.alert("Download Failed", "Please check your internet connection and try again.");
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={homeStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
+      {/* Global Processing Overlay */}
+      {isProcessing && <ProcessingScreen submessage={processingStatus} />}
 
       {/* The Modal Itself */}
       <Modal
@@ -492,7 +529,7 @@ export default function App(): JSX.Element {
             elevation: 15,
           }}
           activeOpacity={0.7}
-          onPress={() => setShowModal(true)}
+          onPress={handleStartPress}
         >
           <Feather name="power" size={32} color={colors.goldAccent} />
         </TouchableOpacity>
