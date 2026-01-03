@@ -598,6 +598,7 @@ const homeStyles = StyleSheet.create({
   bottomContainer: {
     padding: 30,
     paddingBottom: 50, // Extra padding for bottom screens
+    alignItems: 'center', // Center the button horizontally
   },
 
 });
