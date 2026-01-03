@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
-import { Entypo, Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { Entypo, Feather, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
 import { addTask, deleteMeeting, deleteTask, getMeetings, getTasksForMeeting, initDatabase, updateMeeting, updateTask } from './database';
 import ProcessingScreen from './ProcessingScreen';
@@ -38,11 +38,16 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editTaskText, setEditTaskText] = useState('');
 
+  // New: Manual Task Addition
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskText, setNewTaskText] = useState('');
+
   // 1a. State for Record Modal
   const [showRecordModal, setShowRecordModal] = useState(false);
 
   // NEW: Processing State
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("Analyzing transmission...");
 
   // 2. INITIAL LOAD
   const loadMeetings = async () => {
@@ -95,7 +100,9 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         // 3. Trigger Async Action Extraction (Wait for it now)
         try {
           // Use the ephemeral transcription passed from RecordModal
-          const actions = await extractActionItems(transcription || newMeeting.title);
+          const actions = await extractActionItems(transcription || newMeeting.title, (status) => {
+            setProcessingStatus(status);
+          });
 
           if (actions && actions.length > 0) {
             for (const action of actions) {
@@ -205,12 +212,32 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
     }
   };
 
+  const handleSaveNewTask = async () => {
+    if (!activeTabId || !newTaskText.trim()) {
+      setIsAddingTask(false);
+      return;
+    }
+
+    try {
+      await addTask(activeTabId, newTaskText);
+      setNewTaskText('');
+      setIsAddingTask(false);
+
+      // Refresh
+      const uTasks = await getTasksForMeeting(activeTabId);
+      setTasks(uTasks);
+      Alert.alert('Success', 'Task added');
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to add task: ' + err.message);
+    }
+  };
+
   return (
     <SafeAreaView style={modalStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
 
       {/* Processing Overlay */}
-      {isProcessing && <ProcessingScreen />}
+      {isProcessing && <ProcessingScreen submessage={processingStatus} />}
 
       {/* 1. Header Section with CLOSE button */}
       <View style={modalStyles.headerContainer}>
@@ -279,6 +306,9 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
                 <Text style={modalStyles.sectionTitle}>{meetings.find(m => m.id === activeTabId)?.title || "No Meetings"}</Text>
                 {activeTabId && (
                   <View style={modalStyles.sectionIcons}>
+                    <TouchableOpacity style={modalStyles.iconButton} onPress={() => setIsAddingTask(true)}>
+                      <Feather name="plus-circle" size={24} color={colors.textWhite} />
+                    </TouchableOpacity>
                     <TouchableOpacity style={modalStyles.iconButton} onPress={handleStartEditTitle}>
                       <Feather name="edit-2" size={24} color={colors.textWhite} />
                     </TouchableOpacity>
@@ -293,6 +323,29 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
           {/* Task List - Now using modern CARDS */}
           <View style={modalStyles.taskList}>
+            {/* New Task Input Row */}
+            {isAddingTask && (
+              <View style={[modalStyles.taskCard, { borderColor: colors.goldAccent, borderWidth: 1 }]}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <TextInput
+                    style={[modalStyles.taskText, { flex: 1, borderBottomWidth: 1, borderBottomColor: colors.textDim, padding: 0 }]}
+                    value={newTaskText}
+                    onChangeText={setNewTaskText}
+                    placeholder="Enter new task..."
+                    placeholderTextColor={colors.textDim}
+                    autoFocus
+                    onSubmitEditing={handleSaveNewTask}
+                  />
+                  <TouchableOpacity onPress={handleSaveNewTask}>
+                    <Feather name="check" size={24} color={colors.goldAccent} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsAddingTask(false)}>
+                    <Feather name="x" size={24} color={colors.textDim} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {tasks.map((task: any, index: number) => (
               <View key={index} style={modalStyles.taskCard}>
                 {editingTaskId === task.id ? (
@@ -332,8 +385,28 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         <TouchableOpacity activeOpacity={0.7}>
           <Entypo name="home" size={30} color={colors.goldAccent} />
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => setShowRecordModal(true)}>
-          <FontAwesome5 name="plus-square" size={28} color="#333" />
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowRecordModal(true)}
+          style={{
+            backgroundColor: colors.headerBg,
+            width: 70,
+            height: 70,
+            borderRadius: 35,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 40, // Lifts the button up
+            borderWidth: 2,
+            borderColor: colors.goldAccent,
+            // Glow/Shadow
+            shadowColor: colors.goldAccent,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.5,
+            shadowRadius: 8,
+            elevation: 10,
+          }}
+        >
+          <Feather name="mic" size={32} color={colors.goldAccent} />
         </TouchableOpacity>
       </View>
 

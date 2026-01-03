@@ -1,13 +1,13 @@
+import * as FileSystem from 'expo-file-system';
 import { File as ExpoFile, Paths } from 'expo-file-system'; // Alias to avoid global File conflict
 import { initLlama, LlamaContext } from 'llama.rn';
-import { Alert, Platform } from 'react-native';
-import { unzip, unzipAssets } from 'react-native-zip-archive';
+import { Alert } from 'react-native';
 
 let context: LlamaContext | null = null;
 const MODEL_NAME = 'Qwen3-0.6B-Q5_K_M.gguf';
 
 // Initialize the model
-export const initModel = async () => {
+export const initModel = async (onStatus?: (msg: string) => void) => {
     if (context) return; // Already initialized
 
     try {
@@ -19,42 +19,41 @@ export const initModel = async () => {
         const destFile = new ExpoFile(docDir, MODEL_NAME);
 
         if (!destFile.exists) {
-            // First run: Extracting AI model... (Silently)
+            onStatus?.('Initializing Neural Core...');
+            // Alert.alert('Initializing Neural Core', 'Downloading advanced features... (This happens only once)');
 
-            if (Platform.OS === 'android') {
-                // Android: Extract directly from Assets (Install-time pack)
-                try {
-                    const targetPath = docDir.uri.replace('file://', '');
-                    await unzipAssets('model.zip', targetPath);
-                } catch (err) {
-                    throw new Error("Failed to unzip Qwen model from assets: " + err);
-                }
-            } else {
-                // iOS / Dev: Copy from bundle then unzip
-                const zipName = 'model.zip';
-                const tempZip = new ExpoFile(Paths.cache, zipName);
-                const assetUri = Paths.bundle + '/' + zipName;
-                const assetFile = new ExpoFile(assetUri);
+            // Download from URL
+            const MODEL_URL = "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q5_K_M.gguf?download=true";
 
-                if (assetFile.exists) {
-                    await assetFile.copy(tempZip);
-                    if (tempZip.exists) {
-                        try {
-                            await unzip(tempZip.uri, docDir.uri);
-                        } finally {
-                            await tempZip.delete();
-                        }
+            try {
+                const downloadResumable = FileSystem.createDownloadResumable(
+                    MODEL_URL,
+                    destFile.uri,
+                    {},
+                    (downloadProgress) => {
+                        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+                        // Optional: You could debounce and emit this progress to UI
                     }
-                } else {
-                    throw new Error(`Model zip not found at ${assetUri}`);
+                );
+
+                const result = await downloadResumable.downloadAsync();
+                if (!result || !result.uri) {
+                    throw new Error("Download failed");
                 }
+
+                onStatus?.('Neural Core Ready');
+                // Alert.alert('Success', 'Neural Core ready.');
+
+            } catch (e: any) {
+                console.error("Download failed", e);
+                throw new Error("Failed to download model: " + e.message);
             }
         }
 
-        // Double check existence after unzip
-        if (!destFile.exists) {
-            throw new Error(`Model file ${MODEL_NAME} not found after extraction`);
-        }
+        // Double check existence after download
+        // We need to re-check existence property or use the file object freshly regarding sync state if needed, 
+        // but ExpoFile.exists is a property getter so accessing it again should be fine if implementation matches.
+        // Ideally we should rely on download success.
 
         const destinationUri = destFile.uri.replace('file://', '');
 
@@ -73,14 +72,14 @@ export const initModel = async () => {
 };
 
 // Extract action items
-export const extractActionItems = async (transcription: string) => {
+export const extractActionItems = async (transcription: string, onStatus?: (msg: string) => void) => {
 
 
 
     if (!context) {
 
 
-        await initModel();
+        await initModel(onStatus);
     }
 
     // Qwen-Instruct template

@@ -8,7 +8,15 @@ const colors = {
     dim: '#A0A0A0',
 };
 
-export default function ProcessingScreen() {
+interface ProcessingScreenProps {
+    message?: string;
+    submessage?: string;
+}
+
+export default function ProcessingScreen({
+    message = "FISSION INTEL",
+    submessage = "Analyzing transmission..."
+}: ProcessingScreenProps) {
     const fadeAnim = new Animated.Value(0.4);
 
     useEffect(() => {
@@ -32,9 +40,9 @@ export default function ProcessingScreen() {
         <View style={styles.container}>
             <View style={styles.card}>
                 <ActivityIndicator size="large" color={colors.gold} style={styles.spinner} />
-                <Text style={styles.title}>FISSION INTEL</Text>
+                <Text style={styles.title}>{message}</Text>
                 <Animated.Text style={[styles.subtitle, { opacity: fadeAnim }]}>
-                    Analyzing transmission...
+                    {submessage}
                 </Animated.Text>
                 <Text style={styles.hint}>Extracting action items and summary</Text>
             </View>
