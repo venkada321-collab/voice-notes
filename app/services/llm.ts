@@ -1,4 +1,3 @@
-import * as FileSystem from 'expo-file-system';
 import { File as ExpoFile, Paths } from 'expo-file-system'; // Alias to avoid global File conflict
 import { initLlama, LlamaContext } from 'llama.rn';
 import { Alert } from 'react-native';
@@ -20,23 +19,15 @@ export const initModel = async (onStatus?: (msg: string) => void) => {
 
         if (!destFile.exists) {
             onStatus?.('Initializing Neural Core...');
-            // Alert.alert('Initializing Neural Core', 'Downloading advanced features... (This happens only once)');
 
             // Download from URL
             const MODEL_URL = "https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q5_K_M.gguf?download=true";
 
             try {
-                const downloadResumable = FileSystem.createDownloadResumable(
-                    MODEL_URL,
-                    destFile.uri,
-                    {},
-                    (downloadProgress) => {
-                        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-                        // Optional: You could debounce and emit this progress to UI
-                    }
-                );
+                // New File System API (SDK 53+)
+                // We use the File object's downloadAsync method
+                const result = await destFile.downloadAsync(MODEL_URL);
 
-                const result = await downloadResumable.downloadAsync();
                 if (!result || !result.uri) {
                     throw new Error("Download failed");
                 }
