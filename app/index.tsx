@@ -1,10 +1,10 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Feather, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
-import { addTask, deleteMeeting, deleteTask, getMeetings, getTasksForMeeting, initDatabase, updateMeeting, updateTask } from './database';
+import { addTask, deleteMeeting, deleteTask, getMeetings, getSetting, getTasksForMeeting, initDatabase, setSetting, updateMeeting, updateTask } from './database';
 import ProcessingScreen from './ProcessingScreen';
 import RecordModal from './RecordModal';
 import { checkModelExists, extractActionItems, initModel } from './services/llm';
@@ -683,6 +683,19 @@ export default function App(): JSX.Element {
     }
   };
 
+  const handleOpenLink = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        console.warn(`Cannot open URL: ${url}`);
+      }
+    } catch (error) {
+      console.error("Failed to open link:", error);
+    }
+  };
+
   const performDownload = async (setProgress: (p: number) => void) => {
     try {
       await initModel(
@@ -790,7 +803,7 @@ export default function App(): JSX.Element {
         <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
           {/* X (Twitter) */}
           <TouchableOpacity
-            onPress={() => Linking.openURL('https://x.com/compscimaniac')}
+            onPress={() => handleOpenLink('https://x.com/compscimaniac')}
             style={homeStyles.socialButton}
           >
             <Feather name="twitter" size={20} color={colors.goldAccent} />
@@ -798,7 +811,7 @@ export default function App(): JSX.Element {
 
           {/* YouTube */}
           <TouchableOpacity
-            onPress={() => Linking.openURL('https://www.youtube.com/@VPSubatomic')}
+            onPress={() => handleOpenLink('https://www.youtube.com/@VPSubatomic')}
             style={homeStyles.socialButton}
           >
             <Feather name="youtube" size={20} color={colors.goldAccent} />
@@ -806,7 +819,7 @@ export default function App(): JSX.Element {
 
           {/* Instagram */}
           <TouchableOpacity
-            onPress={() => Linking.openURL('https://www.instagram.com/subatomic.96')}
+            onPress={() => handleOpenLink('https://www.instagram.com/subatomic.96')}
             style={homeStyles.socialButton}
           >
             <Feather name="instagram" size={20} color={colors.goldAccent} />
