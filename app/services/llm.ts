@@ -15,13 +15,10 @@ export const checkModelExists = async () => {
 };
 
 // Initialize the model
-export const initModel = async (onStatus?: (msg: string) => void) => {
+export const initModel = async (onStatus?: (msg: string) => void, onProgress?: (ratio: number) => void) => {
     if (context) return; // Already initialized
 
     try {
-
-
-
         const docDir = Paths.document;
         if (!docDir) throw new Error('Document directory not found');
         const destFile = new ExpoFile(docDir, MODEL_NAME);
@@ -38,6 +35,10 @@ export const initModel = async (onStatus?: (msg: string) => void) => {
                     MODEL_URL,
                     destFile.uri,
                     {},
+                    (downloadProgress) => {
+                        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+                        onProgress?.(progress);
+                    }
                 );
 
                 const result = await downloadResumable.downloadAsync();
@@ -49,8 +50,7 @@ export const initModel = async (onStatus?: (msg: string) => void) => {
                 onStatus?.('Neural Core Ready');
 
             } catch (e: any) {
-                console.error("Download failed", e);
-                throw new Error("Failed to download model: " + e.message);
+                throw new Error("Failed to download model");
             }
         }
 
@@ -76,7 +76,7 @@ export const initModel = async (onStatus?: (msg: string) => void) => {
 };
 
 // Extract action items
-export const extractActionItems = async (transcription: string, onStatus?: (msg: string) => void) => {
+export const extractActionItems = async (transcription: string, onStatus?: (msg: string) => void): Promise<{ success: boolean; data?: string[]; errorType?: 'NO_JSON' | 'CRASH' }> => {
 
 
 
@@ -117,7 +117,7 @@ ${transcription}
             try {
                 const parsed = JSON.parse(jsonMatch[0]);
 
-                return parsed;
+                return { success: true, data: parsed };
             } catch (e) {
 
             }
@@ -134,18 +134,16 @@ ${transcription}
                 try {
                     const parsed = JSON.parse(candidate);
 
-                    return parsed;
+                    return { success: true, data: parsed };
                 } catch (e) {
                     console.error('Fallback parsing failed:', e);
                 }
             }
         }
 
-        Alert.alert('LLM Warning', 'No JSON found in output');
-        return [];
+        return { success: false, errorType: 'NO_JSON' };
     } catch (e: any) {
         console.error('Inference failed:', e);
-        Alert.alert('LLM Error', 'Inference crashed: ' + e.message);
-        return [];
+        return { success: false, errorType: 'CRASH' };
     }
 };

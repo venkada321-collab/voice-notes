@@ -49,6 +49,10 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("Analyzing transmission...");
 
+  // NEW: Info Modal State (Local to TaskModal)
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoModalConfig, setInfoModalConfig] = useState({ title: '', message: '', isError: false });
+
   // 2. INITIAL LOAD
   const loadMeetings = async () => {
     const loadedMeetings = await getMeetings();
@@ -85,6 +89,11 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
     fetchTasks();
   }, [activeTabId]); // Re-run whenever activeTabId changes
 
+  const showFeedback = (title: string, msg: string, isError: boolean = false) => {
+    setInfoModalConfig({ title, message: msg, isError });
+    setShowInfoModal(true);
+  };
+
   const handleMeetingSaved = async (transcription: string) => {
     // 1. Show Processing Screen
     setIsProcessing(true);
@@ -100,17 +109,27 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         // 3. Trigger Async Action Extraction (Wait for it now)
         try {
           // Use the ephemeral transcription passed from RecordModal
-          const actions = await extractActionItems(transcription || newMeeting.title, (status) => {
+          const response = await extractActionItems(transcription || newMeeting.title, (status) => {
             setProcessingStatus(status);
           });
 
-          if (actions && actions.length > 0) {
-            for (const action of actions) {
+          if (response.success && response.data && response.data.length > 0) {
+            for (const action of response.data) {
               await addTask(newMeeting.id, action);
+            }
+          } else if (!response.success) {
+            // CUSTOM ERROR HANDLING (via Data Object, not Exception)
+            if (response.errorType === 'NO_JSON') {
+              setTimeout(() => showFeedback('Analysis Incomplete', 'The Neural Core could not extract structured tasks from this recording.', true), 500);
+            } else if (response.errorType === 'CRASH') {
+              setTimeout(() => showFeedback('Core Failure', 'The inference engine encountered a critical instability.', true), 500);
+            } else {
+              setTimeout(() => showFeedback('Analysis Failed', 'Action extraction encountered a disruption.', true), 500);
             }
           }
         } catch (err) {
-          console.error('Extraction failed:', err);
+          console.error('Unexpected extraction error:', err);
+          setTimeout(() => showFeedback('System Error', 'An unexpected error occurred during analysis.', true), 500);
         }
 
         // 4. Update UI to show new meeting and tasks
@@ -142,7 +161,8 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
             await deleteMeeting(activeTabId);
             const newMeetings = await getMeetings();
             setMeetings(newMeetings);
-            Alert.alert('Success', 'Meeting deleted');
+
+            showFeedback('Meeting Deleted', 'The meeting and its contents have been removed.');
 
             if (newMeetings.length > 0) {
               const next = newMeetings[Math.max(0, newMeetings.length - 1)];
@@ -174,9 +194,10 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       setIsEditingTitle(false);
       const newMeetings = await getMeetings();
       setMeetings(newMeetings);
-      Alert.alert('Success', 'Meeting updated');
+      showFeedback('Meeting Updated', 'Title updated successfully.');
     } catch (err: any) {
-      Alert.alert('Error', 'Failed to update meeting: ' + err.message);
+      console.error('Failed to update meeting: ' + err.message);
+      showFeedback('Update Failed', 'Could not update meeting title.', true);
     }
   };
 
@@ -187,9 +208,10 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         const uTasks = await getTasksForMeeting(activeTabId);
         setTasks(uTasks);
       }
-      Alert.alert('Success', 'Task deleted');
+      showFeedback('Task Deleted', 'Action item removed.');
     } catch (err: any) {
-      Alert.alert('Error', 'Failed to delete task: ' + err.message);
+      console.error('Failed to delete task: ' + err.message);
+      showFeedback('Delete Failed', 'Could not remove task.', true);
     }
   };
 
@@ -206,9 +228,10 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         const uTasks = await getTasksForMeeting(activeTabId);
         setTasks(uTasks);
       }
-      Alert.alert('Success', 'Task updated');
+      showFeedback('Task Updated', 'Content modified successfully.');
     } catch (err: any) {
-      Alert.alert('Error', 'Failed to update task: ' + err.message);
+      console.error('Failed to update task: ' + err.message);
+      showFeedback('Update Failed', 'Could not save changes.', true);
     }
   };
 
@@ -226,9 +249,10 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       // Refresh
       const uTasks = await getTasksForMeeting(activeTabId);
       setTasks(uTasks);
-      Alert.alert('Success', 'Task added');
+      showFeedback('Task Added', 'New action item recorded.');
     } catch (err: any) {
-      Alert.alert('Error', 'Failed to add task: ' + err.message);
+      console.error('Failed to add task: ' + err.message);
+      showFeedback('Add Failed', 'Could not save new task.', true);
     }
   };
 
@@ -421,52 +445,279 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
 
 
 // ==========================================
+//   DOWNLOAD CONFIRMATION MODAL
+// ==========================================
+function DownloadConfirmationModal({
+  visible,
+  onClose,
+  onDownload
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onDownload: (setProgress: (p: number) => void) => Promise<void>;
+}): JSX.Element {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setError(null); // Reset error
+    try {
+      await onDownload(setProgress); // Pass setter to parent's handler
+      // Parent handles closing on success (which unmounts/hides this modal)
+    } catch (e: any) {
+      setIsDownloading(false);
+      setProgress(0);
+      setError("Unable to complete download. Please check your internet connection.");
+    }
+  };
+
+  const handleClose = () => {
+    setError(null);
+    setIsDownloading(false);
+    setProgress(0);
+    onClose();
+  }
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={handleClose}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+        <View style={{
+          width: '100%',
+          backgroundColor: colors.headerBg,
+          borderRadius: 20,
+          padding: 30,
+          borderWidth: 1,
+          borderColor: error ? '#FF4444' : colors.goldAccent, // Red border on error
+          alignItems: 'center'
+        }}>
+          {error ? (
+            <Feather name="wifi-off" size={48} color="#FF4444" style={{ marginBottom: 20 }} />
+          ) : (
+            <Feather name="cpu" size={48} color={colors.goldAccent} style={{ marginBottom: 20 }} />
+          )}
+
+          <Text style={{
+            color: colors.textWhite,
+            fontSize: 22,
+            fontWeight: 'bold',
+            marginBottom: 10,
+            textAlign: 'center'
+          }}>
+            {error ? "Connection Failed" : "Initialize Neural Core"}
+          </Text>
+
+          <Text style={{ color: colors.textDim, fontSize: 16, marginBottom: 30, textAlign: 'center', lineHeight: 24 }}>
+            {error || "Fission requires a one-time download of the neural model (444MB) to enable advanced analysis."}
+          </Text>
+
+          {isDownloading ? (
+            <View style={{ width: '100%', alignItems: 'center' }}>
+              <View style={{
+                width: '100%',
+                height: 8,
+                backgroundColor: '#333',
+                borderRadius: 4,
+                overflow: 'hidden',
+                marginBottom: 15
+              }}>
+                <View style={{
+                  width: `${progress * 100}%`,
+                  height: '100%',
+                  backgroundColor: colors.goldAccent
+                }} />
+              </View>
+              <Text style={{ color: colors.textWhite, fontWeight: '600' }}>
+                {(progress * 100).toFixed(0)}%
+              </Text>
+              <Text style={{ color: colors.textDim, fontSize: 12, marginTop: 5 }}>
+                Downloading high-performance assets...
+              </Text>
+            </View>
+          ) : (
+            <View style={{ width: '100%', gap: 15 }}>
+              <TouchableOpacity
+                onPress={handleDownload}
+                style={{
+                  backgroundColor: error ? '#FF4444' : colors.goldAccent,
+                  paddingVertical: 15,
+                  borderRadius: 12,
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{ color: error ? colors.textWhite : colors.headerBg, fontWeight: 'bold', fontSize: 16 }}>
+                  {error ? "Retry Download" : "Download (444MB)"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleClose}
+                style={{
+                  paddingVertical: 15,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.textDim
+                }}
+              >
+                <Text style={{ color: colors.textDim, fontWeight: '600', fontSize: 16 }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ==========================================
+//   TUTORIAL MODAL (First Launch)
+// ==========================================
+function TutorialModal({
+  visible,
+  onClose
+}: {
+  visible: boolean;
+  onClose: () => void;
+}): JSX.Element {
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+        <View style={{
+          width: '100%',
+          backgroundColor: colors.headerBg,
+          borderRadius: 20,
+          padding: 30,
+          borderWidth: 1,
+          borderColor: colors.goldAccent,
+          alignItems: 'center'
+        }}>
+          <Feather name="zap" size={48} color={colors.goldAccent} style={{ marginBottom: 20 }} />
+
+          <Text style={{ color: colors.textWhite, fontSize: 24, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
+            How Fission Works
+          </Text>
+
+          <View style={{ gap: 15, marginVertical: 20, width: '100%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: colors.goldAccent, fontWeight: 'bold' }}>1</Text>
+              </View>
+              <Text style={{ color: colors.textDim, flex: 1, fontSize: 16 }}>Record your raw thoughts or meeting notes.</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: colors.goldAccent, fontWeight: 'bold' }}>2</Text>
+              </View>
+              <Text style={{ color: colors.textDim, flex: 1, fontSize: 16 }}>Neural Core extracts action items automatically (if any are detected).</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: colors.goldAccent, fontWeight: 'bold' }}>3</Text>
+              </View>
+              <Text style={{ color: colors.textDim, flex: 1, fontSize: 16 }}>Manage your structured tasks effortlessly.</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              backgroundColor: colors.goldAccent,
+              paddingVertical: 15,
+              borderRadius: 12,
+              width: '100%',
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: colors.headerBg, fontWeight: 'bold', fontSize: 16 }}>
+              Initialize System
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ==========================================
 //   MAIN APP COMPONENT (Homepage)
 // ==========================================
 export default function App(): JSX.Element {
   // State to control whether the modal is visible
   const [showModal, setShowModal] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false); // NEW: Tutorial State
 
-  // Processing state for the main screen (during initial download)
+  // Processing state for the main screen (during extraction)
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
 
   const handleStartPress = async () => {
+    // 1. Check Tutorial First
+    const hasSeenTutorial = await getSetting('hasSeenTutorial');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+      return;
+    }
+
+    // 2. Then Check Model
     const hasModel = await checkModelExists();
 
     if (hasModel) {
       setShowModal(true);
     } else {
-      Alert.alert(
-        "Download Required",
-        "Advanced analysis requires a one-time download of the Neural Core (444MB). Proceed?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Download",
-            onPress: async () => {
-              setIsProcessing(true);
-              setProcessingStatus("Initializing Neural Core...");
-              try {
-                await initModel((status: string) => setProcessingStatus(status));
-                setIsProcessing(false);
-                setShowModal(true); // Auto-open after success
-              } catch (e) {
-                setIsProcessing(false);
-                Alert.alert("Download Failed", "Please check your internet connection and try again.");
-              }
-            }
-          }
-        ]
+      setShowDownloadModal(true);
+    }
+  };
+
+  const performDownload = async (setProgress: (p: number) => void) => {
+    try {
+      await initModel(
+        (status) => console.log(status), // Status logs
+        (ratio) => setProgress(ratio)    // Progress updates
       );
+      // Success
+      setShowDownloadModal(false);
+      setShowModal(true); // Auto-open recording
+    } catch (e) {
+      throw e; // Propagate to Modal to reset state
     }
   };
 
   return (
     <SafeAreaView style={homeStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
-      {/* Global Processing Overlay */}
+      {/* Global Processing Overlay (for extraction only now) */}
       {isProcessing && <ProcessingScreen submessage={processingStatus} />}
+
+      <DownloadConfirmationModal
+        visible={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        onDownload={performDownload}
+      />
+
+      <TutorialModal
+        visible={showTutorial}
+        onClose={async () => {
+          setShowTutorial(false);
+          await setSetting('hasSeenTutorial', 'true');
+          // Re-trigger start press logic to proceed to next step
+          handleStartPress();
+        }}
+      />
 
       {/* The Modal Itself */}
       <Modal
@@ -527,12 +778,40 @@ export default function App(): JSX.Element {
             shadowOpacity: 0.8,
             shadowRadius: 15,
             elevation: 15,
+            marginBottom: 30, // Space for social icons
           }}
           activeOpacity={0.7}
           onPress={handleStartPress}
         >
           <Feather name="power" size={32} color={colors.goldAccent} />
         </TouchableOpacity>
+
+        {/* Social Contact Section */}
+        <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
+          {/* X (Twitter) */}
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://x.com/compscimaniac')}
+            style={homeStyles.socialButton}
+          >
+            <Feather name="twitter" size={20} color={colors.goldAccent} />
+          </TouchableOpacity>
+
+          {/* YouTube */}
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://www.youtube.com/@VPSubatomic')}
+            style={homeStyles.socialButton}
+          >
+            <Feather name="youtube" size={20} color={colors.goldAccent} />
+          </TouchableOpacity>
+
+          {/* Instagram */}
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://www.instagram.com/subatomic.96')}
+            style={homeStyles.socialButton}
+          >
+            <Feather name="instagram" size={20} color={colors.goldAccent} />
+          </TouchableOpacity>
+        </View>
       </View>
 
     </SafeAreaView>
@@ -599,6 +878,16 @@ const homeStyles = StyleSheet.create({
     padding: 30,
     paddingBottom: 50, // Extra padding for bottom screens
     alignItems: 'center', // Center the button horizontally
+  },
+  socialButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#222',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 179, 0, 0.3)', // Subtle gold border
   },
 
 });

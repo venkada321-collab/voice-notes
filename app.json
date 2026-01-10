@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "VoiceFission",
-    "slug": "VoiceFission",
+    "name": "Fission",
+    "slug": "Fission",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -52,8 +52,7 @@
       ],
       [
         "react-native-vosk",
-        {
-        }
+        {}
       ],
       "expo-web-browser"
     ],

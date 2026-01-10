@@ -19,6 +19,11 @@ export const initDatabase = async () => {
       is_done INTEGER DEFAULT 0,
       FOREIGN KEY (meeting_id) REFERENCES meetings (id)
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
 
   // --- SEED DATA REMOVED ---
@@ -100,6 +105,25 @@ export const updateTask = async (taskId: number, content: string) => {
   const statement = await db.prepareAsync('UPDATE tasks SET content = ? WHERE id = ?');
   try {
     await statement.executeAsync([content, taskId]);
+  } finally {
+    await statement.finalizeAsync();
+  }
+};
+
+// 9. Key-Value Settings (Persistent Preferences)
+export const getSetting = async (key: string): Promise<string | null> => {
+  try {
+    const result = await db.getFirstAsync('SELECT value FROM settings WHERE key = ?', [key]);
+    return result ? result.value : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const setSetting = async (key: string, value: string) => {
+  const statement = await db.prepareAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+  try {
+    await statement.executeAsync([key, value]);
   } finally {
     await statement.finalizeAsync();
   }
