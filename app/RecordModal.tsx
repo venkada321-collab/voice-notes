@@ -121,6 +121,14 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
         }
     }
 
+    async function pauseRecording() {
+        try {
+            await Vosk.stop();
+            setStatus('paused');
+        } catch (e) {
+            console.error(e);
+        }
+    }
 
     async function resumeRecording() {
         try {
