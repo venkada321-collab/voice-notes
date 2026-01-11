@@ -4,7 +4,6 @@ import { Alert, Image, Linking, Modal, Platform, SafeAreaView, ScrollView, Statu
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Feather, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
-import InfoModal from './components/InfoModal';
 import { addTask, deleteMeeting, deleteTask, getMeetings, getSetting, getTasksForMeeting, initDatabase, setSetting, updateMeeting, updateTask } from './database';
 import ProcessingScreen from './ProcessingScreen';
 import RecordModal from './RecordModal';
@@ -440,15 +439,6 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       >
         <RecordModal onClose={() => setShowRecordModal(false)} onSave={handleMeetingSaved} />
       </Modal>
-
-      {/* Modern Feedback Dialog (TaskModal Scope) */}
-      <InfoModal
-        visible={showInfoModal}
-        title={infoModalConfig.title}
-        message={infoModalConfig.message}
-        isError={infoModalConfig.isError}
-        onClose={() => setShowInfoModal(false)}
-      />
     </SafeAreaView>
   );
 }
@@ -675,24 +665,9 @@ export default function App(): JSX.Element {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
 
-  // Initialize DB on App Start
-  useEffect(() => {
-    initDatabase();
-  }, []);
-
-  // Global Feedback State
-  const [showAppModal, setShowAppModal] = useState(false);
-  const [appModalConfig, setAppModalConfig] = useState({ title: '', message: '', isError: false });
-
-  const showAppFeedback = (title: string, message: string, isError = false) => {
-    setAppModalConfig({ title, message, isError });
-    setShowAppModal(true);
-  };
-
   const handleStartPress = async () => {
     // 1. Check Tutorial First
     const hasSeenTutorial = await getSetting('hasSeenTutorial');
-    // Debug Alert removed
     if (!hasSeenTutorial) {
       setShowTutorial(true);
       return;
@@ -710,24 +685,19 @@ export default function App(): JSX.Element {
 
   const handleOpenLink = async (url: string) => {
     try {
-      // For http/https, we skip canOpenURL checks on Android because they often fail 
-      // due to manifest visibility rules, yet openURL works fine (launches browser/app).
-      const isWeb = url.startsWith('http');
-      if (isWeb) {
+      // For http/https, skip canOpenURL (often fails on Android 11+ due to visibility rules)
+      if (url.startsWith('http')) {
         await Linking.openURL(url);
         return;
       }
-
       const supported = await Linking.canOpenURL(url);
       if (supported) {
         await Linking.openURL(url);
       } else {
         console.warn(`Cannot open URL: ${url}`);
-        showAppFeedback('Error', 'Cannot open this link.');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to open link:", error);
-      showAppFeedback('Error', 'Failed to open link: ' + error.message, true);
     }
   };
 
@@ -761,15 +731,8 @@ export default function App(): JSX.Element {
         visible={showTutorial}
         onClose={async () => {
           setShowTutorial(false);
-          try {
-            await setSetting('hasSeenTutorial', 'true');
-          } catch (e) {
-            console.error("Failed to save setting", e);
-            // Alert.alert("Error", "Could not save tutorial preference: " + String(e));
-            // Note: We can't use showAppFeedback here easily because TutorialModal covers App. 
-            // But we can try setting the state, and if TutorialModal closes, it shows up.
-            // For now, let's silence the alert or assume it works, given the user wants no alerts.
-          }
+          await setSetting('hasSeenTutorial', 'true');
+          // Re-trigger start press logic to proceed to next step
           handleStartPress();
         }}
       />
@@ -868,15 +831,6 @@ export default function App(): JSX.Element {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Global Info Modal */}
-      <InfoModal
-        visible={showAppModal}
-        title={appModalConfig.title}
-        message={appModalConfig.message}
-        isError={appModalConfig.isError}
-        onClose={() => setShowAppModal(false)}
-      />
 
     </SafeAreaView>
   );

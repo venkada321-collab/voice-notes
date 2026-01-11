@@ -1,10 +1,9 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Vosk from 'react-native-vosk';
 import { unzip, unzipAssets } from 'react-native-zip-archive';
-import InfoModal from './components/InfoModal';
 import { addMeeting } from './database';
 
 const colors = {
@@ -23,15 +22,6 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
     const [transcription, setTranscription] = useState('');
     const [partialResult, setPartialResult] = useState('');
     const [isModelLoaded, setIsModelLoaded] = useState(false);
-
-    // InfoModal State
-    const [showInfoModal, setShowInfoModal] = useState(false);
-    const [infoModalConfig, setInfoModalConfig] = useState({ title: '', message: '', isError: false });
-
-    const showFeedback = (title: string, message: string, isError = false) => {
-        setInfoModalConfig({ title, message, isError });
-        setShowInfoModal(true);
-    };
 
     // Load Vosk Model on Mount
     useEffect(() => {
@@ -53,7 +43,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                             await unzipAssets('vosk-model.zip', targetPath);
                         } catch (e: any) {
                             console.error('Vosk unzip failed', e);
-                            showFeedback('Error', 'Failed to unzip models: ' + e.message, true);
+                            Alert.alert('Error', 'Failed to unzip models: ' + e.message);
                         }
                     } else {
                         // iOS/Dev Fallback
@@ -74,24 +64,32 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                 }
 
                 // Now load from the unzipped directory
+                // React-native-vosk expects a path. It might handle file:// or absolute path.
+                // Paths.document.uri usually is file:///...
+                // We'll pass the relative name if it supports it, or full path.
+                // The library usually looks in external files dir if passed a name, but we can pass full path.
+                // Let's try passing the full path.
+
                 const modelPath = modelDir.uri.replace('file://', '');
                 await Vosk.loadModel(modelPath);
                 setIsModelLoaded(true);
 
             } catch (e: any) {
                 console.error('Failed to load Vosk model', e);
-                showFeedback('Error', 'Failed to load offline transcription model.', true);
+                Alert.alert('Error', 'Failed to load offline transcription model: ' + (e.message || JSON.stringify(e)));
             }
         };
         loadModel();
 
         // Event Listeners
         const resultSub = Vosk.onResult((res) => {
+
             setTranscription(prev => prev + " " + res);
             setPartialResult('');
         });
 
         const partialSub = Vosk.onPartialResult((res) => {
+            // res is usually the partial string
             setPartialResult(res);
         });
 
@@ -109,19 +107,25 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
 
     async function startRecording() {
         if (!isModelLoaded) {
-            showFeedback('Loading', 'Please wait for the model to load.');
+            Alert.alert('Loading', 'Please wait for the model to load.');
             return;
         }
         try {
+
             await Vosk.start();
             setStatus('recording');
         } catch (e) {
             console.error('Failed to start Vosk', e);
-            showFeedback('Error', 'Microphone permission or generic error.', true);
+            Alert.alert('Error', 'Microphone permission or generic error.');
         }
     }
 
     async function pauseRecording() {
+        // Vosk doesn't natively support "pause" in the same way expo-av does (it's a stream).
+        // We can just stop knowing we will append to the same transcription state, 
+        // or arguably just stop it.
+        // For simplicity, let's treat pause as stop temporarily for the engine, 
+        // but keep UI in "Paused" state. when resuming, we calls start() again.
         try {
             await Vosk.stop();
             setStatus('paused');
@@ -153,7 +157,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
 
     async function handleSave() {
         if (!meetingName.trim()) {
-            showFeedback("Title required", "Please enter a name for this recording.", true);
+            Alert.alert("Title required", "Please enter a name for this recording.");
             return;
         }
         await addMeeting(meetingName); // Only save title to DB
@@ -203,14 +207,6 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                         <Feather name="check" size={60} color="black" />
                     </TouchableOpacity>
                 </View>
-
-                <InfoModal
-                    visible={showInfoModal}
-                    title={infoModalConfig.title}
-                    message={infoModalConfig.message}
-                    isError={infoModalConfig.isError}
-                    onClose={() => setShowInfoModal(false)}
-                />
             </View>
         );
     }
@@ -267,14 +263,6 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                     </>
                 )}
             </View>
-
-            <InfoModal
-                visible={showInfoModal}
-                title={infoModalConfig.title}
-                message={infoModalConfig.message}
-                isError={infoModalConfig.isError}
-                onClose={() => setShowInfoModal(false)}
-            />
         </View>
     );
 }
