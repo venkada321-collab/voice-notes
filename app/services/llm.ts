@@ -1,7 +1,6 @@
 import { File as ExpoFile, Paths } from 'expo-file-system'; // Alias to avoid global File conflict
 import * as FileSystem from 'expo-file-system/legacy'; // Fix: Use legacy API for download
 import { initLlama, LlamaContext } from 'llama.rn';
-import { Alert } from 'react-native';
 
 let context: LlamaContext | null = null;
 const MODEL_NAME = 'Qwen3-0.6B-Q5_K_M.gguf';
@@ -70,7 +69,7 @@ export const initModel = async (onStatus?: (msg: string) => void, onProgress?: (
 
     } catch (e: any) {
         console.error('Failed to init Qwen model:', e);
-        Alert.alert('LLM Error', 'Init failed: ' + e.message);
+        // Alert.alert('LLM Error', 'Init failed: ' + e.message); // Native alert removed
         throw e;
     }
 };
