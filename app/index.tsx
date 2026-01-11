@@ -665,6 +665,11 @@ export default function App(): JSX.Element {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
 
+  // Initialize DB on App Start (ensures settings table exists)
+  useEffect(() => {
+    initDatabase();
+  }, []);
+
   const handleStartPress = async () => {
     // 1. Check Tutorial First
     const hasSeenTutorial = await getSetting('hasSeenTutorial');
