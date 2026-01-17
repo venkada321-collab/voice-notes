@@ -148,6 +148,11 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
             if (status === 'recording') {
                 await Vosk.stop();
             }
+            // Capture any remaining partial result that wasn't finalized
+            if (partialResult.trim()) {
+                setTranscription(prev => prev + " " + partialResult);
+                setPartialResult('');
+            }
             setStatus('done');
         } catch (e) {
             console.error(e);
