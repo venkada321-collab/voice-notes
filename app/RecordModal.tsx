@@ -82,14 +82,15 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
         loadModel();
 
         // Event Listeners
-        const resultSub = Vosk.onResult((res) => {
 
-            setTranscription(prev => prev + " " + res);
+        // onResult fires on natural pauses - just clear partial display
+        const resultSub = Vosk.onResult((res) => {
+            // Don't accumulate here - let onFinalResult handle it to avoid duplication
             setPartialResult('');
         });
 
+        // onPartialResult - live display only (real-time preview)
         const partialSub = Vosk.onPartialResult((res) => {
-            // res is usually the partial string
             setPartialResult(res);
         });
 
@@ -97,10 +98,19 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
             console.error('Vosk Error:', e);
         });
 
+        // onFinalResult fires when stop() is called - THIS is where we accumulate
+        const finalSub = Vosk.onFinalResult((res) => {
+            if (res && res.trim()) {
+                setTranscription(prev => prev + " " + res);
+            }
+            setPartialResult('');
+        });
+
         return () => {
             resultSub.remove();
             partialSub.remove();
             errorSub.remove();
+            finalSub.remove();
             Vosk.unload(); // Cleanup
         };
     }, []);
@@ -121,13 +131,11 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
     }
 
     async function pauseRecording() {
-        // Vosk doesn't natively support "pause" in the same way expo-av does (it's a stream).
-        // We can just stop knowing we will append to the same transcription state, 
-        // or arguably just stop it.
-        // For simplicity, let's treat pause as stop temporarily for the engine, 
-        // but keep UI in "Paused" state. when resuming, we calls start() again.
+        // Vosk doesn't natively support "pause" - we stop the engine and rely on
+        // onFinalResult to capture any remaining text. Resume calls start() again.
         try {
             await Vosk.stop();
+            // onFinalResult will fire and capture remaining text
             setStatus('paused');
         } catch (e) {
             console.error(e);
@@ -147,11 +155,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
         try {
             if (status === 'recording') {
                 await Vosk.stop();
-            }
-            // Capture any remaining partial result that wasn't finalized
-            if (partialResult.trim()) {
-                setTranscription(prev => prev + " " + partialResult);
-                setPartialResult('');
+                // onFinalResult will fire and capture remaining text
             }
             setStatus('done');
         } catch (e) {
@@ -254,10 +258,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
                                 </TouchableOpacity>
                             ) : (
                                 <TouchableOpacity onPress={resumeRecording} style={styles.controlBtn}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <View style={styles.redDotSmall} />
-                                        <Text style={styles.recTextSmall}>REC</Text>
-                                    </View>
+                                    <Ionicons name="play" size={30} color="white" />
                                 </TouchableOpacity>
                             )}
 
