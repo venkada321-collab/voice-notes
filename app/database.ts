@@ -45,8 +45,20 @@ const withRetry = async <T>(operation: () => Promise<T>): Promise<T> => {
     // Check if it's a stale connection error (NullPointerException)
     if (e?.message?.includes('NullPointerException') || e?.message?.includes('prepareAsync')) {
       Alert.alert('Database Issue', 'Connection lost. Reconnecting...');
-      console.log('Stale DB connection detected, reconnecting...');
-      db = await SQLite.openDatabaseAsync('fission.db'); // Force fresh connection
+      console.log('Stale DB connection detected, closing and reconnecting...');
+
+      // Close existing connection if it exists
+      try {
+        if (db && typeof db.closeAsync === 'function') {
+          await db.closeAsync();
+        }
+      } catch (closeErr) {
+        console.log('Error closing stale connection:', closeErr);
+      }
+
+      // Open fresh connection
+      db = await SQLite.openDatabaseAsync('fission.db', { useNewConnection: true });
+
       try {
         return await operation(); // Retry once
       } catch (retryError: any) {
