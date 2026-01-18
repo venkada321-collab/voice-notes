@@ -87,7 +87,7 @@ export const extractActionItems = async (transcription: string, onStatus?: (msg:
 
     // Qwen-Instruct template
     const prompt = `<|im_start|>system
-You are a helpful assistant. Extract actionable tasks from the user's text. Return them as a JSON list of strings. Example: ["Buy milk", "Call John"]. Only return the JSON.
+You are a helpful assistant. Extract actionable tasks from the user's text. Return them as a JSON list of strings. For Example: ["Buy milk", "Call John"]. Only return the JSON.
 <|im_end|>
 <|im_start|>user
 ${transcription}

@@ -1,5 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import { Alert } from 'react-native';
 
 // Open the database (creates it if it doesn't exist)
 let db: any = null;
@@ -44,8 +43,6 @@ const withRetry = async <T>(operation: () => Promise<T>): Promise<T> => {
   } catch (e: any) {
     // Check if it's a stale connection error (NullPointerException)
     if (e?.message?.includes('NullPointerException') || e?.message?.includes('prepareAsync')) {
-      Alert.alert('Database Issue', 'Connection lost. Reconnecting...');
-      console.log('Stale DB connection detected, closing and reconnecting...');
 
       // Close existing connection if it exists
       try {
@@ -62,8 +59,6 @@ const withRetry = async <T>(operation: () => Promise<T>): Promise<T> => {
       try {
         return await operation(); // Retry once
       } catch (retryError: any) {
-        // Retry also failed - alert user
-        Alert.alert('Database Error', `Failed after retry: ${retryError?.message || 'Unknown error'}. Please restart the app.`);
         throw retryError;
       }
     }
