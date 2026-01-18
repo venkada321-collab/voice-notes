@@ -83,9 +83,11 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
 
         // Event Listeners
 
-        // onResult fires on natural pauses - just clear partial display
+        // onResult fires on natural pauses - accumulate finalized segments
         const resultSub = Vosk.onResult((res) => {
-            // Don't accumulate here - let onFinalResult handle it to avoid duplication
+            if (res && res.trim()) {
+                setTranscription(prev => prev + " " + res);
+            }
             setPartialResult('');
         });
 
@@ -98,7 +100,7 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
             console.error('Vosk Error:', e);
         });
 
-        // onFinalResult fires when stop() is called - THIS is where we accumulate
+        // onFinalResult fires when stop() is called - capture final segment
         const finalSub = Vosk.onFinalResult((res) => {
             if (res && res.trim()) {
                 setTranscription(prev => prev + " " + res);
