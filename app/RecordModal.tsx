@@ -165,13 +165,21 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
     }
 
     async function handleSave() {
+        Alert.alert('Debug 1', `meetingName: "${meetingName}"\ntranscription length: ${transcription.length}`);
         if (!meetingName.trim()) {
             Alert.alert("Title required", "Please enter a name for this recording.");
             return;
         }
-        await addMeeting(meetingName); // Only save title to DB
-        onSave(transcription.trim()); // Pass transcript to parent for processing
-        onClose();
+        try {
+            Alert.alert('Debug 2', 'Adding meeting to DB...');
+            await addMeeting(meetingName);
+            Alert.alert('Debug 3', `Calling onSave with ${transcription.length} chars...`);
+            onSave(transcription.trim());
+            Alert.alert('Debug 4', 'Calling onClose...');
+            onClose();
+        } catch (e: any) {
+            Alert.alert('Error', 'handleSave failed: ' + e.message);
+        }
     }
 
     // --- RENDER HELPERS ---
