@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 // Open the database (creates it if it doesn't exist)
-let db: any;
+let db: any = null;
 
 export const initDatabase = async () => {
   db = await SQLite.openDatabaseAsync('fission.db');
@@ -30,21 +30,32 @@ export const initDatabase = async () => {
   // Default behavior: Start empty.
 };
 
+// Helper to ensure DB connection is valid (fixes background resume issue)
+const ensureDbConnection = async () => {
+  if (!db) {
+    db = await SQLite.openDatabaseAsync('fission.db');
+  }
+  return db;
+};
+
 // --- API FUNCTIONS ---
 
 // 1. Get all Pills (Meetings)
 export const getMeetings = async () => {
-  return await db.getAllAsync('SELECT * FROM meetings'); // Returns [{id: 1, title: 'Meeting 1'}, ...]
+  const conn = await ensureDbConnection();
+  return await conn.getAllAsync('SELECT * FROM meetings');
 };
 
 // 2. Get Tasks for a specific Pill
 export const getTasksForMeeting = async (meetingId: number) => {
-  return await db.getAllAsync('SELECT * FROM tasks WHERE meeting_id = ?', [meetingId]);
+  const conn = await ensureDbConnection();
+  return await conn.getAllAsync('SELECT * FROM tasks WHERE meeting_id = ?', [meetingId]);
 };
 
 // 3. Add a new Task
 export const addTask = async (meetingId: number, content: string) => {
-  const statement = await db.prepareAsync('INSERT INTO tasks (meeting_id, content) VALUES (?, ?)');
+  const conn = await ensureDbConnection();
+  const statement = await conn.prepareAsync('INSERT INTO tasks (meeting_id, content) VALUES (?, ?)');
   try {
     await statement.executeAsync([meetingId, content]);
   } finally {
@@ -54,7 +65,8 @@ export const addTask = async (meetingId: number, content: string) => {
 
 // 4. Delete a Task
 export const deleteTask = async (taskId: number) => {
-  const statement = await db.prepareAsync('DELETE FROM tasks WHERE id = ?');
+  const conn = await ensureDbConnection();
+  const statement = await conn.prepareAsync('DELETE FROM tasks WHERE id = ?');
   try {
     await statement.executeAsync([taskId]);
   } finally {
@@ -64,7 +76,8 @@ export const deleteTask = async (taskId: number) => {
 
 // 5. Add a new Meeting (Pill) - Transcription is now ephemeral and not saved
 export const addMeeting = async (title: string) => {
-  const statement = await db.prepareAsync('INSERT INTO meetings (title) VALUES (?)');
+  const conn = await ensureDbConnection();
+  const statement = await conn.prepareAsync('INSERT INTO meetings (title) VALUES (?)');
   try {
     await statement.executeAsync([title]);
   } finally {
@@ -74,15 +87,16 @@ export const addMeeting = async (title: string) => {
 
 // 6. Delete a Meeting (and its tasks)
 export const deleteMeeting = async (meetingId: number) => {
+  const conn = await ensureDbConnection();
   // Manual cascade delete
-  const taskStmt = await db.prepareAsync('DELETE FROM tasks WHERE meeting_id = ?');
+  const taskStmt = await conn.prepareAsync('DELETE FROM tasks WHERE meeting_id = ?');
   try {
     await taskStmt.executeAsync([meetingId]);
   } finally {
     await taskStmt.finalizeAsync();
   }
 
-  const meetingStmt = await db.prepareAsync('DELETE FROM meetings WHERE id = ?');
+  const meetingStmt = await conn.prepareAsync('DELETE FROM meetings WHERE id = ?');
   try {
     await meetingStmt.executeAsync([meetingId]);
   } finally {
@@ -92,7 +106,8 @@ export const deleteMeeting = async (meetingId: number) => {
 
 // 7. Update Meeting Title
 export const updateMeeting = async (meetingId: number, title: string) => {
-  const statement = await db.prepareAsync('UPDATE meetings SET title = ? WHERE id = ?');
+  const conn = await ensureDbConnection();
+  const statement = await conn.prepareAsync('UPDATE meetings SET title = ? WHERE id = ?');
   try {
     await statement.executeAsync([title, meetingId]);
   } finally {
@@ -102,7 +117,8 @@ export const updateMeeting = async (meetingId: number, title: string) => {
 
 // 8. Update Task Content
 export const updateTask = async (taskId: number, content: string) => {
-  const statement = await db.prepareAsync('UPDATE tasks SET content = ? WHERE id = ?');
+  const conn = await ensureDbConnection();
+  const statement = await conn.prepareAsync('UPDATE tasks SET content = ? WHERE id = ?');
   try {
     await statement.executeAsync([content, taskId]);
   } finally {
@@ -113,7 +129,8 @@ export const updateTask = async (taskId: number, content: string) => {
 // 9. Key-Value Settings (Persistent Preferences)
 export const getSetting = async (key: string): Promise<string | null> => {
   try {
-    const result = await db.getFirstAsync('SELECT value FROM settings WHERE key = ?', [key]);
+    const conn = await ensureDbConnection();
+    const result = await conn.getFirstAsync('SELECT value FROM settings WHERE key = ?', [key]);
     return result ? result.value : null;
   } catch (e) {
     return null;
@@ -121,7 +138,8 @@ export const getSetting = async (key: string): Promise<string | null> => {
 };
 
 export const setSetting = async (key: string, value: string) => {
-  const statement = await db.prepareAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+  const conn = await ensureDbConnection();
+  const statement = await conn.prepareAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   try {
     await statement.executeAsync([key, value]);
   } finally {
