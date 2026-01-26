@@ -32,3 +32,12 @@
 -keep class com.facebook.react.modules.** { *; }
 -keep class com.facebook.react.uimanager.** { *; }
 -keep class com.facebook.react.views.** { *; }
+
+# Vosk and Kaldi
+-keep class com.alphacephei.vosk.** { *; }
+-keep class org.kaldi.** { *; }
+-keep class com.vosk.** { *; }
+
+# JNA (Required by Vosk)
+-keep class com.sun.jna.** { *; }
+-keep class * extends com.sun.jna.** { *; }

@@ -126,9 +126,9 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
 
             await Vosk.start();
             setStatus('recording');
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to start Vosk', e);
-            Alert.alert('Error', 'Microphone permission or generic error.');
+            Alert.alert('Vosk Error', `Failed to start: ${e?.message || e}`);
         }
     }
 
@@ -139,8 +139,9 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
             await Vosk.stop();
             // onFinalResult will fire and capture remaining text
             setStatus('paused');
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            Alert.alert('Error', `Failed to pause: ${e?.message || e}`);
         }
     }
 
@@ -148,8 +149,9 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
         try {
             await Vosk.start();
             setStatus('recording');
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            Alert.alert('Error', `Failed to resume: ${e?.message || e}`);
         }
     }
 
