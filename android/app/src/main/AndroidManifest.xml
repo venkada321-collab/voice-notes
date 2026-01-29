@@ -26,7 +26,8 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="fission"/>
+        <data android:scheme="voicefission"/>
+        <data android:scheme="exp+fission"/>
       </intent-filter>
     </activity>
   </application>

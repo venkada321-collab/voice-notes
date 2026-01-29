@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -32,7 +32,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       "expo-router",
       [
         "expo-sqlite",
@@ -52,7 +51,11 @@
       ],
       [
         "react-native-vosk",
-        {}
+        {
+          "models": [
+            "assets/model"
+          ]
+        }
       ],
       "expo-web-browser"
     ],

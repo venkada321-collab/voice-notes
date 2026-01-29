@@ -3,7 +3,6 @@ import { File as ExpoFile, Paths } from 'expo-file-system';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Vosk from 'react-native-vosk';
-import { unzip, unzipAssets } from 'react-native-zip-archive';
 import { addMeeting } from './database';
 
 const colors = {
@@ -27,51 +26,10 @@ export default function RecordModal({ onClose, onSave }: { onClose: () => void, 
     useEffect(() => {
         const loadModel = async () => {
             try {
-                const docDir = Paths.document;
-                if (!docDir) throw new Error("No doc dir");
-
-                // Target directory for the unzipped model folder
-                const modelDir = new ExpoFile(docDir, 'model'); // 'model' is the folder name inside zip
-
-                if (!modelDir.exists) {
-                    // Extracting Speech Model... (Silently)
-
-                    if (Platform.OS === 'android') {
-                        // Android: Extract directly from Assets
-                        try {
-                            const targetPath = docDir.uri.replace('file://', '');
-                            await unzipAssets('vosk-model.zip', targetPath);
-                        } catch (e: any) {
-                            console.error('Vosk unzip failed', e);
-                            Alert.alert('Error', 'Failed to unzip models: ' + e.message);
-                        }
-                    } else {
-                        // iOS/Dev Fallback
-                        const zipName = 'vosk-model.zip';
-                        const tempZip = new ExpoFile(Paths.cache, zipName);
-                        const assetUri = Paths.bundle + '/' + zipName;
-                        const assetFile = new ExpoFile(assetUri);
-
-                        if (assetFile.exists) {
-                            await assetFile.copy(tempZip);
-                        }
-
-                        if (tempZip.exists) {
-                            await unzip(tempZip.uri, docDir.uri);
-                            await tempZip.delete();
-                        }
-                    }
-                }
-
-                // Now load from the unzipped directory
-                // React-native-vosk expects a path. It might handle file:// or absolute path.
-                // Paths.document.uri usually is file:///...
-                // We'll pass the relative name if it supports it, or full path.
-                // The library usually looks in external files dir if passed a name, but we can pass full path.
-                // Let's try passing the full path.
-
-                const modelPath = modelDir.uri.replace('file://', '');
-                await Vosk.loadModel(modelPath);
+                // Vosk's loadModel with just the folder name will:
+                // 1. First try to load from external files dir
+                // 2. If not found, use StorageService.unpack to copy from assets/[name]
+                await Vosk.loadModel('model');
                 setIsModelLoaded(true);
 
             } catch (e: any) {
