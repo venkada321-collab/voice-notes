@@ -1,13 +1,13 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Image, Linking, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, SafeAreaView, ScrollView, Share, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // Using Feather for sleeker action icons, Ionicons & Entypo for others
 import { Feather, Ionicons } from '@expo/vector-icons';
 // Import your DB functions
 import { addTask, deleteMeeting, deleteTask, getMeetings, getSetting, getTasksForMeeting, initDatabase, setSetting, updateMeeting, updateTask } from './database';
 import ProcessingScreen from './ProcessingScreen';
 import RecordModal from './RecordModal';
-import { checkModelExists, extractActionItems, initModel } from './services/llm';
+import { checkModelExists, extractActionItems, generateMeetingSummary, initModel } from './services/llm';
 
 // --- Shared Color Palette ---
 const colors = {
@@ -52,6 +52,9 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
   // NEW: Info Modal State (Local to TaskModal)
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalConfig, setInfoModalConfig] = useState({ title: '', message: '', isError: false });
+
+  // 1b. State for Style Selection
+  const [showStyleModal, setShowStyleModal] = useState(false);
 
   // 2. INITIAL LOAD
   const loadMeetings = async () => {
@@ -178,6 +181,46 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
         }
       }
     ]);
+  };
+
+  const handleSharePress = () => {
+    if (activeTabId === null) return;
+    setShowStyleModal(true);
+  };
+
+  const confirmShare = async (style: string) => {
+    setShowStyleModal(false);
+    if (activeTabId === null) return;
+    const currentMeeting = meetings.find(m => m.id === activeTabId);
+    if (!currentMeeting) return;
+
+    setIsProcessing(true);
+    setProcessingStatus("Drafting summary...");
+
+    try {
+      // Generate Summary with Style
+      const result = await generateMeetingSummary(currentMeeting.title, tasks, style);
+
+      let message = "";
+      if (result.success && result.data) {
+        message = result.data;
+      } else {
+        // Should not happen due to fallback, but just in case
+        message = `Meeting: ${currentMeeting.title}\n\nTasks:\n${tasks.map(t => `- ${t.content}`).join('\n')}`;
+      }
+
+      // Share
+      await Share.share({
+        message: message,
+        title: `Summary: ${currentMeeting.title}`
+      });
+
+    } catch (e) {
+      console.error("Share failed:", e);
+      showFeedback("Share Failed", "Could not share meeting summary.", true);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleStartEditTitle = () => {
@@ -330,6 +373,9 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
                 <Text style={modalStyles.sectionTitle}>{meetings.find(m => m.id === activeTabId)?.title || "No Meetings"}</Text>
                 {activeTabId && (
                   <View style={modalStyles.sectionIcons}>
+                    <TouchableOpacity style={modalStyles.iconButton} onPress={handleSharePress}>
+                      <Feather name="share-2" size={24} color={colors.textWhite} />
+                    </TouchableOpacity>
                     <TouchableOpacity style={modalStyles.iconButton} onPress={() => setIsAddingTask(true)}>
                       <Feather name="plus-circle" size={24} color={colors.textWhite} />
                     </TouchableOpacity>
@@ -439,6 +485,12 @@ function TaskModal({ onClose }: { onClose: () => void }): JSX.Element {
       >
         <RecordModal onClose={() => setShowRecordModal(false)} onSave={handleMeetingSaved} />
       </Modal>
+
+      <StyleSelectionModal
+        visible={showStyleModal}
+        onClose={() => setShowStyleModal(false)}
+        onSelectStyle={confirmShare}
+      />
     </SafeAreaView>
   );
 }
@@ -645,6 +697,89 @@ function TutorialModal({
             <Text style={{ color: colors.headerBg, fontWeight: 'bold', fontSize: 16 }}>
               Initialize System
             </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ==========================================
+//   STYLE SELECTION MODAL
+// ==========================================
+function StyleSelectionModal({
+  visible,
+  onClose,
+  onSelectStyle
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSelectStyle: (style: string) => void;
+}): JSX.Element {
+  const styles = [
+    { id: 'formal', label: 'Formal', icon: 'briefcase', desc: 'Professional and concise.' },
+    { id: 'casual', label: 'Casual', icon: 'coffee', desc: 'Relaxed, blog-post style.' },
+    { id: 'friend', label: 'To a Friend', icon: 'message-circle', desc: 'Informal with emojis.' },
+    { id: 'simple', label: 'Simple', icon: 'sun', desc: 'Explain like I\'m 5.' },
+  ];
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <View style={{
+          width: '100%',
+          maxWidth: 340,
+          backgroundColor: colors.headerBg,
+          borderRadius: 20,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: colors.goldAccent,
+        }}>
+          <Text style={{ color: colors.textWhite, fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+            Select Summary Style
+          </Text>
+
+          <View style={{ gap: 10 }}>
+            {styles.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                onPress={() => onSelectStyle(s.id)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.cardBg,
+                  padding: 15,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#444'
+                }}
+              >
+                <View style={{ width: 40, alignItems: 'center' }}>
+                  <Feather name={s.icon as any} size={24} color={colors.goldAccent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textWhite, fontWeight: 'bold', fontSize: 16 }}>{s.label}</Text>
+                  <Text style={{ color: colors.textDim, fontSize: 13 }}>{s.desc}</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={colors.textDim} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              marginTop: 20,
+              paddingVertical: 12,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: colors.textDim, fontWeight: '600' }}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -146,3 +146,70 @@ ${transcription}
         return { success: false, errorType: 'CRASH' };
     }
 };
+
+export const generateMeetingSummary = async (title: string, tasks: any[], style: string = 'formal', onStatus?: (msg: string) => void): Promise<{ success: boolean; data?: string; errorType?: 'CRASH' }> => {
+    // If no context, try to init (though usually it should be ready if we are in the app)
+    if (!context) {
+        try {
+            await initModel(onStatus);
+        } catch (e) {
+            // Fallback if model cannot load: simple join
+            const fallback = `Meeting: ${title}\n\nTasks:\n${tasks.map(t => `- ${t.content}`).join('\n')}`;
+            return { success: true, data: fallback };
+        }
+    }
+
+    // If still no context (init failed silently or something), fallback
+    if (!context) {
+        const fallback = `Meeting: ${title}\n\nTasks:\n${tasks.map(t => `- ${t.content}`).join('\n')}`;
+        return { success: true, data: fallback };
+    }
+
+    const taskListString = tasks.map(t => `- ${t.content}`).join('\n');
+
+    let styleInstruction = "The summary should be concise, professional, and ready to share.";
+    if (style === 'casual') {
+        styleInstruction = "The summary should be relaxed, easy-going, and written like a blog post or tweet.";
+    } else if (style === 'friend') {
+        styleInstruction = "The summary should be very informal, like texting a close friend. Use emojis and slang where appropriate.";
+    } else if (style === 'simple') {
+        styleInstruction = "The summary should be extremely simple, as if explaining it to a 5-year-old. Use very basic words.";
+    }
+
+    const prompt = `<|im_start|>system
+You are a helpful assistant. Summarize the following meeting based on its title and action items. ${styleInstruction}
+<|im_end|>
+<|im_start|>user
+Meeting Title: ${title}
+
+Action Items:
+${taskListString}
+
+Please provide a brief summary paragraph followed by the list of action items.
+<|im_end|>
+<|im_start|>assistant
+`;
+
+    try {
+        const result = await context.completion({
+            prompt,
+            n_predict: 512,
+            temperature: 0.6,
+            top_p: 0.95,
+            top_k: 20,
+            min_p: 0
+        });
+
+        // Remove<think>...</think> blocks (including attributes like <think_start>)
+        // Handles multiline content within think tags
+        let cleanText = result.text.replace(/<think[\s\S]*?<\/think>/gi, '').trim();
+
+        return { success: true, data: cleanText };
+
+    } catch (e: any) {
+        console.error('Summary generation failed:', e);
+        // Fallback on crash
+        const fallback = `Meeting: ${title}\n\nTasks:\n${tasks.map(t => `- ${t.content}`).join('\n')}`;
+        return { success: true, data: fallback };
+    }
+};
