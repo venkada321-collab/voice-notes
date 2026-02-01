@@ -11,4 +11,24 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+
+# React Native General
+-keep class com.facebook.react.** { *; }
+-keep class com.facebook.jni.** { *; }
+
+# Llama.rn
+-keep class com.rnllama.** { *; }
+
+# Vosk
+-keep class com.vosk.** { *; }
+-keep class org.vosk.** { *; }
+
+# JNA
+-keep class com.sun.jna.** { *; }
+-dontwarn com.sun.jna.**
+
+# AWT
+-dontwarn java.awt.**
+
 # Add any project specific keep options here:
+
